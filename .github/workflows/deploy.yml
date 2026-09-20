@@ -1,0 +1,64 @@
+name: Deploy to GitHub Pages
+
+# 推到 main / master 就自動部署；也可以到 Actions 分頁手動執行
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+# GitHub Pages 部署需要的權限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時只跑一個部署，新的會等舊的做完
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: 驗證手工關卡
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # 逐關檢查 levels.js 是否還能通關（正向與上下翻轉都檢查）
+      # 結果會出現在 Actions 的 Summary，過不了的關卡只會警告，不會擋住部署
+      # 想讓它擋住部署，把下面那行改成： node .github/scripts/validate-levels.js --strict
+      - run: node .github/scripts/validate-levels.js
+
+  deploy:
+    name: 部署
+    needs: validate
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # repo 根目錄可能是 crv-out（遊戲在 gravity-switch/ 底下），也可能直接是遊戲資料夾
+      - name: 決定要發布的資料夾
+        id: dir
+        run: |
+          if [ -f gravity-switch/index.html ]; then
+            echo "path=gravity-switch" >> "$GITHUB_OUTPUT"
+          elif [ -f index.html ]; then
+            echo "path=." >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::找不到 index.html，無法決定要發布哪個資料夾"
+            exit 1
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ steps.dir.outputs.path }}
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
