@@ -318,6 +318,17 @@ let parts = [], flash = 0, shake = 0, deathT = 0, clock = 0, lastScore = 0;
 let debug = /[?&]debug/.test(location.search);
 const cam = { x: 0 };
 
+// ---------- 指定關卡播放自己的音樂 ----------
+// 關卡名稱 → 音檔（路徑相對於 index.html）。進入該關才播，離開或死亡就停，之後回到合成音樂
+const LEVEL_BGM = {
+  'x': 'cool.mp3',
+};
+function segBgm(seg) {
+  if (!seg || !seg.name) return null;
+  const name = seg.name.replace(/^★/, '').replace('（翻轉）', '');
+  return LEVEL_BGM[name] || null;
+}
+
 // ---------- 單關模式：重複遊玩同一關、死亡自動重來、不計分也不影響存檔 ----------
 //   練習：從主選單選一關（fromMenu = true，可用 Esc 或按鈕離開）
 //   試玩：由地圖編輯器以 index.html#test=... 開啟
@@ -376,7 +387,7 @@ function startRun() {
   state = 'playing';
   closePanels(); $('menu').classList.add('hidden');
   $('quitFocus').classList.toggle('hidden', !(FOCUS && FOCUS.fromMenu));
-  Sound.unlock(); Sound.music(true);
+  Sound.unlock(); Sound.track(null); Sound.music(true);
 }
 
 function press() {
@@ -408,16 +419,19 @@ function simStep() {
     }
   }
   run.score = Math.max(0, Math.floor((p.x - RUN_START_X) / CONFIG.COLS_PER_POINT));
+  let segChanged = false;
   while (segPtr + 1 < world.segs.length && world.segs[segPtr + 1].start <= p.x + P) {
-    segPtr++;
+    segPtr++; segChanged = true;
     if (FOCUS && segPtr > 1) FOCUS.passes++;   // 單關模式：跨過一次關卡結尾 = 通過一次
   }
+  if (segChanged) Sound.track(segBgm(world.segs[segPtr]));   // 進入 / 離開有指定音樂的關卡
   run.maxD = Math.max(run.maxD, world.segs[segPtr].d);
   if (++stepCount % 12 === 0 && !FOCUS) checkChallenges(false);
 }
 
 function die() {
   state = 'dead'; deathT = 0; flash = 1; shake = 1;
+  Sound.track(null);   // 死亡就停掉關卡音樂
   Sound.death();
   if (FOCUS) FOCUS.deaths++;
   const pl = skinPal(curSkin(), clock);
@@ -436,7 +450,7 @@ function endRun() {
   checkChallenges(true);
   persist();
   state = 'menu';
-  Sound.music(false);
+  Sound.track(null); Sound.music(false);
   showMenu(isBest && run.score > 0);
 }
 
@@ -695,7 +709,7 @@ function startPractice(h) {
 }
 function quitFocus() {
   FOCUS = null;
-  Sound.music(false);
+  Sound.track(null); Sound.music(false);
   $('quitFocus').classList.add('hidden');
   newWorld(); p = newPlayer(); cam.x = p.x - CAM_OFFSET; parts = []; flash = 0; shake = 0;
   ensureWorld(30);
