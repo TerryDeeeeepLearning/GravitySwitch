@@ -205,6 +205,11 @@ const Sound = (() => {
       if (!el) {
         el = new Audio(src);
         el.loop = true; el.preload = 'auto';
+        // 載不到（檔案沒上傳、檔名大小寫不符…）就退回合成音樂，並在主控台留線索
+        el.addEventListener('error', () => {
+          if (typeof console !== 'undefined') console.warn('[Sound] 載入音檔失敗：', src, '→ 改用合成音樂');
+          if (trackSrc === src) { trackSrc = null; trackEl = null; startSynth(synthWanted); }
+        });
         trackCache.set(src, el);
       }
       el.volume = muted ? 0 : TRACK_VOL;
