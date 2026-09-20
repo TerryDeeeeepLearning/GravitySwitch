@@ -17,20 +17,21 @@ if (!root) {
 const api = new Function(
   fs.readFileSync(path.join(root, 'core.js'), 'utf8') +
   fs.readFileSync(path.join(root, 'levels.js'), 'utf8') +
-  '; return { validateDetailed, stdCols, parseLevel, mirrorLevel, CONN, CONFIG, LEVELS: typeof HANDMADE_LEVELS !== "undefined" ? HANDMADE_LEVELS : [] };'
+  '; return { validateDetailed, stdCols, parseLevel, mirrorLevel, levelConn, CONFIG, LEVELS: typeof HANDMADE_LEVELS !== "undefined" ? HANDMADE_LEVELS : [] };'
 )();
 
-const { validateDetailed, stdCols, parseLevel, mirrorLevel, CONN, CONFIG, LEVELS } = api;
+const { validateDetailed, stdCols, parseLevel, mirrorLevel, levelConn, CONFIG, LEVELS } = api;
 
 // 遊戲會隨機把關卡上下翻轉使用，所以兩個方向都要檢查
 function check(level, mirrored) {
   const lv = parseLevel(level);
-  const cols = stdCols(CONN).concat((mirrored ? mirrorLevel(lv) : lv).cols);
+  const conn = levelConn(level);
+  const cols = stdCols(conn).concat((mirrored ? mirrorLevel(lv) : lv).cols);
   const res = validateDetailed(cols, level.d);
   const bad = res.filter(r => !r.ok);
   return {
     ok: !bad.length,
-    detail: bad.map(r => `${r.label}（卡在第 ${Math.floor(r.maxX + r.s + 0.1) - CONN + 1} 格）`).join('、'),
+    detail: bad.map(r => `${r.label}（卡在第 ${Math.floor(r.maxX + r.s + 0.1) - conn + 1} 格）`).join('、'),
   };
 }
 
@@ -45,12 +46,13 @@ for (const L of LEVELS) {
     name: L.name,
     d: L.d,
     cols: L.rows[0].length,
+    conn: levelConn(L),
     fwd, mir,
   });
 }
 
 const line = r =>
-  `| ${r.name} | D${r.d} | ${r.cols} 格 | ${r.fwd.ok ? '✅' : '❌ ' + r.fwd.detail} | ${r.mir.ok ? '✅' : '❌ ' + r.mir.detail} |`;
+  `| ${r.name} | D${r.d} | ${r.cols} 格 | ${r.conn} 格 | ${r.fwd.ok ? '✅' : '❌ ' + r.fwd.detail} | ${r.mir.ok ? '✅' : '❌ ' + r.mir.detail} |`;
 
 const md = [
   `## 手工關卡驗證`,
@@ -59,8 +61,8 @@ const md = [
   failed ? `\n> ⚠ 無法通關的關卡在遊戲中會被自動略過。用 editor.html 打開該關，紅線會標出卡住的位置。\n` : '',
   `速度 ${CONFIG.SPEED}、重力 ${CONFIG.GRAVITY}、切換初速 ${CONFIG.FLIP_KICK}（改動這些參數會影響驗證結果）`,
   ``,
-  `| 關卡 | 難度 | 長度 | 正向 | 上下翻轉 |`,
-  `| --- | --- | --- | --- | --- |`,
+  `| 關卡 | 難度 | 長度 | 銜接 | 正向 | 上下翻轉 |`,
+  `| --- | --- | --- | --- | --- | --- |`,
   ...rows.map(line),
 ].join('\n');
 
