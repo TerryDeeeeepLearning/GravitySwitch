@@ -74,6 +74,18 @@
   .achList .rw { margin-left: auto; font-weight: 700; display: flex; align-items: center; gap: .2em; white-space: nowrap; }
   .achList .rw svg { width: 1em; height: 1em; }
 
+  #quitFocus { position: absolute; top: 2.6em; left: 1em; z-index: 5; font-size: 1em; padding: .35em .8em;
+    border-radius: 1.2em; border: .1em solid rgba(255,255,255,.6); background: rgba(10,8,30,.7); }
+  .pNote { font-size: 1.05em; opacity: .8; margin-bottom: .8em; line-height: 1.5; }
+  .pGroup { margin-bottom: .9em; }
+  .pGroup h3 { margin: 0 0 .35em; font-size: 1.2em; display: flex; align-items: center; gap: .5em; }
+  .pGroup h3 span { font-size: .8em; font-weight: 500; opacity: .55; }
+  .pItem { display: flex; align-items: center; gap: .6em; width: 100%; text-align: left; padding: .55em .8em;
+    border-radius: .6em; background: rgba(255,255,255,.07); margin-bottom: .35em; font-size: 1.05em; }
+  .pItem:hover { background: rgba(255,255,255,.16); }
+  .pItem .mi { margin-left: auto; font-size: .85em; opacity: .55; white-space: nowrap; }
+  .pEmpty { opacity: .5; font-size: 1em; padding: .3em 0 .6em; }
+
   #toast { position: absolute; left: 50%; top: 9.5em; transform: translate(-50%, -.6em); opacity: 0; pointer-events: none;
     background: rgba(255,255,255,.95); color: #111; padding: .55em 1.1em; border-radius: 2em; font-size: 1.1em; font-weight: 700;
     white-space: nowrap; transition: opacity .25s, transform .25s; box-shadow: 0 0 1.2em rgba(255,255,255,.4); }
@@ -95,6 +107,7 @@
     <button id="play" class="play" aria-label="play"><svg viewBox="0 0 24 24"><path d="M6 3.5l15 8.5-15 8.5z" fill="#fff"/></svg></button>
     <div class="row">
       <button id="btnShop" class="round" aria-label="shop"><svg viewBox="0 0 24 24"><path d="M12 2.5l8.5 4.7v9.6L12 21.5l-8.5-4.7V7.2z M3.5 7.2L12 12l8.5-4.8 M12 12v9.5" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/></svg></button>
+      <button id="btnPractice" class="round" aria-label="practice" title="練習單一關卡（不計分）"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="12" cy="12" r="4" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="12" cy="12" r="1.4" fill="#fff"/></svg></button>
       <button id="btnAch" class="round" aria-label="challenges"><svg viewBox="0 0 24 24"><path d="M7 3h10v5a5 5 0 01-10 0z M12 13v4 M8 21h8v-2.5H8z" fill="#fff" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/><path d="M7 5H4.2a3.2 3.2 0 003.3 4.2 M17 5h2.8a3.2 3.2 0 01-3.3 4.2" fill="none" stroke="#fff" stroke-width="1.6"/></svg><span class="badge" id="achPct">0%</span></button>
     </div>
     <div class="hint">點擊螢幕 / 空白鍵 切換重力</div>
@@ -107,6 +120,16 @@
   <div id="shop" class="panel hidden">
     <div class="panelHead"><h2>skins</h2><button class="close" data-close>✕</button></div>
     <div class="panelBody"><div class="shopGrid" id="shopGrid"></div></div>
+  </div>
+
+  <button id="quitFocus" class="hidden">✕ 離開練習</button>
+
+  <div id="practice" class="panel hidden">
+    <div class="panelHead"><h2>practice</h2><button class="close" data-close>✕</button></div>
+    <div class="panelBody">
+      <div class="pNote">選一關重複練習。<b>不計分、不影響最佳紀錄</b>，死亡後自動重來。按 Esc 或左上角按鈕離開。</div>
+      <div id="practiceList"></div>
+    </div>
   </div>
 
   <div id="ach" class="panel hidden">
@@ -276,24 +299,32 @@ let parts = [], flash = 0, shake = 0, deathT = 0, clock = 0, lastScore = 0;
 let debug = /[?&]debug/.test(location.search);
 const cam = { x: 0 };
 
-// ---------- 試玩模式：由地圖編輯器以 index.html#test=... 開啟，重複遊玩同一關，死亡自動重來、不影響存檔 ----------
-const TEST = (() => {
+// ---------- 單關模式：重複遊玩同一關、死亡自動重來、不計分也不影響存檔 ----------
+//   練習：從主選單選一關（fromMenu = true，可用 Esc 或按鈕離開）
+//   試玩：由地圖編輯器以 index.html#test=... 開啟
+let FOCUS = null;
+
+function focusFromHash() {
   const m = location.hash.match(/^#test=(.+)$/);
   if (!m) return null;
   try {
     const L = JSON.parse(decodeURIComponent(m[1]));
-    const lv = parseLevel(L), d = clamp(L.d | 0, 1, 5);
-    const conn = levelConn(L);
+    const lv = parseLevel(L), d = clamp(L.d | 0, 1, 5), conn = levelConn(L);
     const cols = stdCols(conn).concat(lv.cols), path = validate(cols, d);
-    return { name: L.name || '未命名', d, conn, cols, coins: lv.coins, path, valid: !!path, deaths: 0, best: 0 };
+    return { name: L.name || '未命名', d, conn, cols, coins: lv.coins, path, valid: !!path,
+      deaths: 0, passes: 0, fromMenu: false, label: '試玩' };
   } catch (e) { return null; }
-})();
-if (TEST) { debug = true; addEventListener('hashchange', () => location.reload()); }
+}
+// HANDMADE 的 cols 已經含開頭的銜接通道
+function focusFromLevel(h) {
+  return { name: h.name, d: h.d, conn: h.conn, cols: h.cols, coins: h.coins, path: h.path, valid: true,
+    deaths: 0, passes: 0, fromMenu: true, label: '練習' };
+}
 
-function testSegment() {
-  const coins = TEST.coins.length ? TEST.coins.map(k => ({ x: k.x + TEST.conn, y: k.y }))
-    : TEST.path ? placeCoins(TEST.path, TEST.cols.length, TEST.d, TEST.conn) : [];
-  return { cols: TEST.cols, d: TEST.d, name: '★' + TEST.name, coins, requested: TEST.d };
+function focusSegment() {
+  const coins = FOCUS.coins.length ? FOCUS.coins.map(k => ({ x: k.x + FOCUS.conn, y: k.y }))
+    : FOCUS.path ? placeCoins(FOCUS.path, FOCUS.cols.length, FOCUS.d, FOCUS.conn) : [];
+  return { cols: FOCUS.cols, d: FOCUS.d, name: '★' + FOCUS.name, coins, requested: FOCUS.d };
 }
 
 function newWorld() {
@@ -302,7 +333,7 @@ function newWorld() {
 function addSegment() {
   const start = world.cols.length;
   const score = Math.max(0, Math.floor((start - RUN_START_X) / CONFIG.COLS_PER_POINT));
-  const seg = TEST ? testSegment() : buildSegment(pickDifficulty(score));
+  const seg = FOCUS ? focusSegment() : buildSegment(pickDifficulty(score));
   for (const c of seg.cols) world.cols.push(c);
   world.segs.push({ start, len: seg.cols.length, d: seg.d, name: seg.name, requested: seg.requested });
   for (const k of seg.coins) world.coins.push({ x: k.x + start, y: k.y, taken: false });
@@ -325,6 +356,7 @@ function startRun() {
   ensureWorld(30);
   state = 'playing';
   closePanels(); $('menu').classList.add('hidden');
+  $('quitFocus').classList.toggle('hidden', !(FOCUS && FOCUS.fromMenu));
 }
 
 function press() {
@@ -353,13 +385,17 @@ function simStep() {
     }
   }
   run.score = Math.max(0, Math.floor((p.x - RUN_START_X) / CONFIG.COLS_PER_POINT));
-  while (segPtr + 1 < world.segs.length && world.segs[segPtr + 1].start <= p.x + P) segPtr++;
+  while (segPtr + 1 < world.segs.length && world.segs[segPtr + 1].start <= p.x + P) {
+    segPtr++;
+    if (FOCUS && segPtr > 1) FOCUS.passes++;   // 單關模式：跨過一次關卡結尾 = 通過一次
+  }
   run.maxD = Math.max(run.maxD, world.segs[segPtr].d);
-  if (++stepCount % 12 === 0 && !TEST) checkChallenges(false);
+  if (++stepCount % 12 === 0 && !FOCUS) checkChallenges(false);
 }
 
 function die() {
   state = 'dead'; deathT = 0; flash = 1; shake = 1;
+  if (FOCUS) FOCUS.deaths++;
   const pl = skinPal(curSkin(), clock);
   for (let i = 0; i < 34; i++) {
     const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 7;
@@ -475,17 +511,17 @@ function render() {
 
   if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash * .85})`; ctx.fillRect(0, 0, W, H); }
 
-  if (state !== 'menu') {
+  if (state !== 'menu' && !FOCUS) {   // 單關模式不計分，改用上方的狀態列
     ctx.font = '700 66px "Exo 2", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
     ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 10;
     ctx.fillStyle = '#fff'; ctx.fillText(run.score, W / 2, 112);
     ctx.shadowBlur = 0;
   }
-  if (TEST) {
+  if (FOCUS) {
     ctx.font = '600 14px system-ui, sans-serif'; ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(0, 0, W, 26);
-    ctx.fillStyle = TEST.valid ? '#7dffb0' : '#ff7070';
-    ctx.fillText(`試玩：${TEST.name}（D${TEST.d}）${TEST.valid ? '' : ' ⚠ 驗證未通過'}　死亡 ${TEST.deaths} 次　最高 ${TEST.best}`, 8, 18);
+    ctx.fillStyle = FOCUS.valid ? '#7dffb0' : '#ff7070';
+    ctx.fillText(`${FOCUS.label}：${FOCUS.name}（D${FOCUS.d}）${FOCUS.valid ? '' : ' ⚠ 驗證未通過'}　通過 ${FOCUS.passes} 次　死亡 ${FOCUS.deaths} 次`, 8, 18);
   }
 }
 
@@ -517,13 +553,13 @@ function frame(now) {
     if (state === 'playing') { cam.x = p.x - CAM_OFFSET; emitTrail(dt); p.squash = Math.max(0, (p.squash || 0) - dt * 7); }
   } else if (state === 'dead') {
     deathT += dt;
-    if (TEST && deathT > .7) { TEST.deaths++; TEST.best = Math.max(TEST.best, run.score); startRun(); }
-    else if (!TEST && deathT > 1.1) endRun();
+    if (FOCUS && deathT > .7) startRun();          // 單關模式：死亡後自動重來
+    else if (!FOCUS && deathT > 1.1) endRun();
   }
   if (state !== 'menu') ensureWorld(1);
   updateParts(dt);
   flash = Math.max(0, flash - dt * 2.2); shake = Math.max(0, shake - dt * 3);
-  $('coinTxt').textContent = save.coins + (run && state !== 'menu' ? run.coins : 0);
+  $('coinTxt').textContent = save.coins + (run && state !== 'menu' && !FOCUS ? run.coins : 0);   // 單關模式不計分、不計方塊
   render();
   requestAnimationFrame(frame);
 }
@@ -555,8 +591,9 @@ function showMenu(isBest) {
   $('menu').classList.remove('hidden');
 }
 
-function closePanels() { $('shop').classList.add('hidden'); $('ach').classList.add('hidden'); }
-function panelOpen() { return !$('shop').classList.contains('hidden') || !$('ach').classList.contains('hidden'); }
+const PANELS = ['shop', 'ach', 'practice'];
+function closePanels() { PANELS.forEach(id => $(id).classList.add('hidden')); }
+function panelOpen() { return PANELS.some(id => !$(id).classList.contains('hidden')); }
 
 function renderShop() {
   const grid = $('shopGrid'); grid.innerHTML = '';
@@ -598,9 +635,50 @@ function renderAch() {
   });
 }
 
-$('play').onclick = e => { e.stopPropagation(); startRun(); };
+// ---------- 練習模式：依難度列出所有手工關卡 ----------
+function renderPractice() {
+  if (!HANDMADE) prepareHandmade();
+  const box = $('practiceList'); box.innerHTML = '';
+  for (let d = 1; d <= 5; d++) {
+    const pool = HANDMADE.filter(h => h.d === d);
+    const g = document.createElement('div');
+    g.className = 'pGroup';
+    g.innerHTML = `<h3>難度 ${d} <span>${pool.length} 關</span></h3>`;
+    if (!pool.length) {
+      const e = document.createElement('div');
+      e.className = 'pEmpty'; e.textContent = '（還沒有這個難度的關卡）';
+      g.appendChild(e);
+    }
+    for (const h of pool) {
+      const b = document.createElement('button');
+      b.className = 'pItem';
+      const cols = h.cols.length - h.conn;
+      b.innerHTML = `<span></span><span class="mi">${cols} 格 · ${(cols / CONFIG.COLS_PER_POINT).toFixed(1)} 分</span>`;
+      b.children[0].textContent = h.name;
+      b.onclick = () => startPractice(h);
+      g.appendChild(b);
+    }
+    box.appendChild(g);
+  }
+}
+function startPractice(h) {
+  FOCUS = focusFromLevel(h);
+  startRun();
+}
+function quitFocus() {
+  FOCUS = null;
+  $('quitFocus').classList.add('hidden');
+  newWorld(); p = newPlayer(); cam.x = p.x - CAM_OFFSET; parts = []; flash = 0; shake = 0;
+  ensureWorld(30);
+  state = 'menu';
+  showMenu(false);
+}
+
+$('play').onclick = e => { e.stopPropagation(); FOCUS = null; startRun(); };
 $('btnShop').onclick = () => { renderShop(); $('shop').classList.remove('hidden'); };
 $('btnAch').onclick = () => { renderAch(); $('ach').classList.remove('hidden'); };
+$('btnPractice').onclick = () => { renderPractice(); $('practice').classList.remove('hidden'); };
+$('quitFocus').onclick = quitFocus;
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = closePanels);
 
 cv.addEventListener('pointerdown', e => { e.preventDefault(); press(); });
@@ -610,13 +688,17 @@ addEventListener('keydown', e => {
     if (e.repeat) return;
     if (state === 'playing') press();
     else if (state === 'menu' && !panelOpen()) startRun();
-  } else if (e.code === 'Escape') closePanels();
-  else if (e.code === 'KeyD') debug = !debug;
+  } else if (e.code === 'Escape') {
+    if (FOCUS && FOCUS.fromMenu && state !== 'menu') quitFocus();
+    else closePanels();
+  } else if (e.code === 'KeyD') debug = !debug;
 });
 
 // 初始畫面：主選單背後放一段關卡
+FOCUS = focusFromHash();
+if (FOCUS) { debug = true; addEventListener('hashchange', () => location.reload()); }
 newWorld(); p = newPlayer(); cam.x = p.x - CAM_OFFSET; ensureWorld(30);
-if (TEST) startRun(); else showMenu(false);
+if (FOCUS) startRun(); else showMenu(false);
 requestAnimationFrame(frame);
 </script>
 </body>
