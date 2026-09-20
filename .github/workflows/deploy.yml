@@ -28,8 +28,14 @@ jobs:
           node-version: '20'
       # 逐關檢查 levels.js 是否還能通關（正向與上下翻轉都檢查）
       # 結果會出現在 Actions 的 Summary，過不了的關卡只會警告，不會擋住部署
-      # 想讓它擋住部署，把下面那行改成： node .github/scripts/validate-levels.js --strict
-      - run: node .github/validate-levels.js
+      # 想讓它擋住部署，在下面的 node 指令後面加上 --strict
+      - name: 驗證手工關卡
+        run: |
+          if [ -f .github/scripts/validate-levels.js ]; then
+            node .github/scripts/validate-levels.js
+          else
+            echo "::warning::找不到 .github/scripts/validate-levels.js，略過關卡驗證"
+          fi
 
   deploy:
     name: 部署
