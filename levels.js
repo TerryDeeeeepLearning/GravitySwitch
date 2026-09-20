@@ -454,7 +454,7 @@ const HANDMADE_LEVELS = [
   },
   {
     "name": "x",
-    "d": 1,
+    "d": 2,
     "conn": 5,
     "rows": [
       "################",
