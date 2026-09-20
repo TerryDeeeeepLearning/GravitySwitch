@@ -28,13 +28,13 @@ const CONFIG = {
   // 依「該關起點的分數」決定抽到難度 1~5 的機率權重
   // 會套用 minScore <= 分數 的最後一列
   DIFFICULTY_TABLE: [
-    { minScore: 0,   weights: [50, 40, 10,  0,  0] },
-    { minScore: 15,  weights: [25, 45, 30,  0,  0] },
-    { minScore: 40,  weights: [10, 30, 40, 20,  0] },
-    { minScore: 80,  weights: [ 0, 15, 40, 35, 10] },
-    { minScore: 120, weights: [ 0,  0, 25, 45, 30] },
-    { minScore: 170, weights: [ 0,  0,  5, 45, 50] },
-    { minScore: 250, weights: [ 0,  0,  0, 30, 70] },
+    { minScore: 0,   weights: [80, 20, 0,  0,  0] },
+    { minScore: 15,  weights: [60, 25, 15,  0,  0] },
+    { minScore: 40,  weights: [20, 35, 40, 5,  0] },
+    { minScore: 80,  weights: [ 5, 15, 35, 35, 10] },
+    { minScore: 120, weights: [ 1,  5, 22, 43, 29] },
+    { minScore: 170, weights: [ 1,  5,  5, 41, 48] },
+    { minScore: 250, weights: [ 1,  5,  0, 27, 67] },
   ],
 };
 
