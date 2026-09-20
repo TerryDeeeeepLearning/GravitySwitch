@@ -74,6 +74,7 @@
       <label>名稱 <input id="fName" size="14"></label>
       <label>難度 <select id="fDiff"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
       <label>長度 <input id="fLen" type="number" min="4" max="120" style="width:70px"> 格 <span id="fPts"></span></label>
+      <label title="關卡開頭自動接上的標準通道長度。開頭就有障礙的關卡可以調長一點">銜接 <input id="fConn" type="number" min="0" max="20" style="width:60px"> 格</label>
       <span class="sep"></span>
       <button id="bMirror" title="上下翻轉整關">上下翻轉</button>
       <button id="bStd" title="重設為標準通道（上下各 4 格）">重設為通道</button>
@@ -103,7 +104,7 @@
         <li><b>左鍵</b>使用目前工具，<b>右鍵</b>擦除（矩形工具的右鍵拖曳 = 清除一塊範圍）。可以按住拖曳連續畫。</li>
         <li><b>地形高度</b>：在上半部點擊 = 設定天花板往下長到哪一列；在下半部點擊 = 設定地板往上長到哪一列。沿著橫向拖曳，就能一筆畫出整段地形輪廓。</li>
         <li><b>黃色方塊</b>：點空格放置 / 移除。沒放的話，遊戲會自動沿著通關路線放一個。</li>
-        <li>左右兩側的<b>淡色 3 格</b>是關卡之間的標準銜接通道（遊戲會自動接上），不能編輯。</li>
+        <li>兩側的<b>淡色格子</b>是關卡之間的標準銜接通道（遊戲會自動接上），不能編輯。左側長度就是「銜接」欄位的值，可以逐關調整；開頭馬上出現障礙、導致進場來不及反應的關卡，把它調長就能解決。右側顯示的是下一關的銜接通道。</li>
         <li>編輯時會<b>即時驗證</b>：從地板或天花板進場都必須能通過才算合格。青色線 = 從地板進場的通關路線，粉色線 = 從天花板進場的通關路線；紅線 = 卡住的位置。</li>
         <li>難度越低，驗證要求的<b>容錯空間</b>越大（碰撞箱放大越多），所以同一張地圖在難度 1 可能不合格、在難度 4 就合格。</li>
         <li>垂直的亮線每 4 格一條 = 遊戲中的 1 分。遊戲會隨機把關卡<b>上下翻轉</b>使用，所以不用兩個方向都做。</li>
@@ -144,8 +145,9 @@
 <script src="levels.js"></script>
 <script>
 'use strict';
-const G = CONN;            // 左右各顯示幾格銜接通道
 const CS = 30;             // 每格像素
+const G = () => levelConn(lv());          // 這一關開頭的銜接通道長度（左側淡色區）
+const G_AFTER = () => CONFIG.CONN;        // 右側顯示的是下一關的銜接通道（預設長度）
 const STORE = 'gsEditor_v1';
 const $ = id => document.getElementById(id);
 const cv = $('grid'), ctx = cv.getContext('2d');
@@ -154,11 +156,11 @@ const cv = $('grid'), ctx = cv.getContext('2d');
 const uid = () => Math.random().toString(36).slice(2, 10);
 const isStdRow = r => r <= C0 || r >= F0;
 function stdRows(N) { return Array.from({ length: ROWS }, (_, r) => (isStdRow(r) ? '#' : '.').repeat(N)); }
-function newLevel(name) { return { id: uid(), name: name || `新關卡 ${levels.length + 1}`, d: 1, rows: stdRows(16) }; }
+function newLevel(name) { return { id: uid(), name: name || `新關卡 ${levels.length + 1}`, d: 1, conn: CONFIG.CONN, rows: stdRows(16) }; }
 function normalize(L) {
   const N = Math.max(1, ...L.rows.map(r => r.length));
   const rows = Array.from({ length: ROWS }, (_, r) => (L.rows[r] || '').padEnd(N, '.').replace(/[^#.o]/g, '.'));
-  return { id: uid(), name: String(L.name || '未命名'), d: clamp(L.d | 0 || 1, 1, 5), rows };
+  return { id: uid(), name: String(L.name || '未命名'), d: clamp(L.d | 0 || 1, 1, 5), conn: levelConn(L), rows };
 }
 
 let levels = [], cur = null;
@@ -192,9 +194,10 @@ function redo() { const h = H(); if (!h.r.length) return; h.u.push(snapshot()); 
 // ---------- 驗證 ----------
 let results = null, vTimer = 0;
 const validCache = new Map();
-function levelCols(L) { return stdCols(CONN).concat(parseLevel(L).cols); }
+function levelCols(L) { return stdCols(levelConn(L)).concat(parseLevel(L).cols); }
+const cacheKey = L => L.d + '|' + levelConn(L) + '|' + L.rows.join('');
 function isValid(L) {
-  const key = L.d + '|' + L.rows.join('');
+  const key = cacheKey(L);
   if (!validCache.has(key)) validCache.set(key, !!validate(levelCols(L), L.d));
   return validCache.get(key);
 }
@@ -202,7 +205,7 @@ function scheduleValidate() { clearTimeout(vTimer); vTimer = setTimeout(runValid
 function runValidate() {
   const L = lv();
   results = validateDetailed(levelCols(L), L.d);
-  validCache.set(L.d + '|' + L.rows.join(''), results.every(r => r.ok));
+  validCache.set(cacheKey(L), results.every(r => r.ok));
   renderStatus(); renderList(); draw();
 }
 function renderStatus() {
@@ -212,10 +215,10 @@ function renderStatus() {
   h += '<ul>';
   for (const r of results) {
     if (r.ok) { h += `<li>✓ ${r.label}</li>`; continue; }
-    const col = Math.floor(r.maxX + r.s + 0.1) - CONN + 1;
+    const col = Math.floor(r.maxX + r.s + 0.1) - levelConn(L) + 1;
     h += `<li style="color:var(--bad)">✗ ${r.label}：${col < 1 ? '在銜接通道就卡住（關卡開頭太快出現障礙）' : `卡在第 ${col} 格`}</li>`;
   }
-  h += `</ul><div class="note" style="margin-top:6px">難度 ${L.d} 的驗證容錯：碰撞箱放大 ${margin} 格。長度 ${grid[0].length} 格 ≈ ${(grid[0].length / CONFIG.COLS_PER_POINT).toFixed(1)} 分。</div>`;
+  h += `</ul><div class="note" style="margin-top:6px">難度 ${L.d} 的驗證容錯：碰撞箱放大 ${margin} 格。長度 ${grid[0].length} 格 ≈ ${(grid[0].length / CONFIG.COLS_PER_POINT).toFixed(1)} 分，開頭銜接 ${levelConn(L)} 格${levelConn(L) === CONFIG.CONN ? '（預設值）' : ''}。</div>`;
   $('status').innerHTML = h;
 }
 
@@ -235,12 +238,17 @@ function renderList() {
 function syncLen() { $('fLen').value = grid[0].length; $('fPts').textContent = `≈ ${(grid[0].length / CONFIG.COLS_PER_POINT).toFixed(1)} 分`; }
 function openLevel() {
   loadGrid();
-  $('fName').value = lv().name; $('fDiff').value = lv().d; syncLen();
+  $('fName').value = lv().name; $('fDiff').value = lv().d; $('fConn').value = levelConn(lv()); syncLen();
   persist(); runValidate();
 }
 
 $('fName').oninput = e => { lv().name = e.target.value; persist(); renderList(); };
 $('fDiff').onchange = e => { lv().d = +e.target.value; persist(); runValidate(); };
+$('fConn').onchange = e => {
+  lv().conn = clamp(Math.round(+e.target.value) || 0, 0, MAX_CONN);
+  $('fConn').value = lv().conn;
+  persist(); runValidate();
+};
 $('fLen').onchange = e => {
   const n = clamp(Math.round(+e.target.value) || 16, 4, 120), N = grid[0].length;
   if (n === N) return syncLen();
@@ -253,7 +261,7 @@ $('bStd').onclick = () => { pushUndo(); grid = stdRows(grid[0].length).map(r => 
 $('bClear').onclick = () => { pushUndo(); grid = grid.map(r => r.map(() => '.')); commit(); };
 $('bNew').onclick = () => { const L = newLevel(); levels.push(L); cur = L.id; openLevel(); };
 $('bDup').onclick = () => {
-  const s = lv(), L = { id: uid(), name: s.name + ' 複製', d: s.d, rows: s.rows.slice() };
+  const s = lv(), L = { id: uid(), name: s.name + ' 複製', d: s.d, conn: levelConn(s), rows: s.rows.slice() };
   levels.splice(levels.indexOf(s) + 1, 0, L); cur = L.id; openLevel();
 };
 $('bDel').onclick = () => {
@@ -272,7 +280,7 @@ setTool('pillar');
 
 function testPlay() {
   const L = lv();
-  window.open('index.html#test=' + encodeURIComponent(JSON.stringify({ name: L.name, d: L.d, rows: L.rows })), 'gs_test');
+  window.open('index.html#test=' + encodeURIComponent(JSON.stringify({ name: L.name, d: L.d, conn: levelConn(L), rows: L.rows })), 'gs_test');
 }
 $('bTest').onclick = testPlay;
 
@@ -290,7 +298,7 @@ addEventListener('keydown', e => {
 // ---------- 編輯操作 ----------
 function cellAt(ev) {
   const b = cv.getBoundingClientRect();
-  return { c: Math.floor((ev.clientX - b.left) / CS) - G, r: Math.floor((ev.clientY - b.top) / CS) };
+  return { c: Math.floor((ev.clientX - b.left) / CS) - G(), r: Math.floor((ev.clientY - b.top) / CS) };
 }
 const inside = (c, r) => c >= 0 && c < grid[0].length && r >= 0 && r < ROWS;
 
@@ -363,7 +371,7 @@ function edgeAttached(g, c) {
   return a;
 }
 function draw() {
-  const N = grid[0].length, TW = N + G * 2;
+  const N = grid[0].length, gb = G(), ga = G_AFTER(), TW = N + gb + ga;
   const dpr = window.devicePixelRatio || 1, W = TW * CS, Hh = ROWS * CS;
   if (cv.width !== W * dpr || cv.height !== Hh * dpr) {
     cv.width = W * dpr; cv.height = Hh * dpr; cv.style.width = W + 'px'; cv.style.height = Hh + 'px';
@@ -373,7 +381,7 @@ function draw() {
   const get = (r, c) => r < 0 || r >= ROWS ? '.' : (c < 0 || c >= N) ? (isStdRow(r) ? '#' : '.') : grid[r][c];
 
   for (let tc = 0; tc < TW; tc++) {
-    const c = tc - G, ghost = c < 0 || c >= N, att = edgeAttached(get, c), x = tc * CS;
+    const c = tc - gb, ghost = c < 0 || c >= N, att = edgeAttached(get, c), x = tc * CS;
     ctx.globalAlpha = ghost ? .28 : 1;
     for (let r = 0; r < ROWS; r++) {
       const ch = get(r, c), y = r * CS;
@@ -396,7 +404,7 @@ function draw() {
   ctx.stroke();
   // 每 4 格 = 1 分
   ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.beginPath();
-  for (let c = 0; c <= N; c += CONFIG.COLS_PER_POINT) { const x = (c + G) * CS + .5; ctx.moveTo(x, 0); ctx.lineTo(x, Hh); }
+  for (let c = 0; c <= N; c += CONFIG.COLS_PER_POINT) { const x = (c + gb) * CS + .5; ctx.moveTo(x, 0); ctx.lineTo(x, Hh); }
   ctx.stroke();
   // 標準地板 / 天花板參考線
   ctx.setLineDash([5, 5]); ctx.strokeStyle = 'rgba(255,255,255,.3)'; ctx.beginPath();
@@ -404,7 +412,8 @@ function draw() {
   ctx.stroke(); ctx.setLineDash([]);
   // 銜接區邊界
   ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = '11px system-ui'; ctx.textAlign = 'center';
-  ctx.fillText('銜接', G * CS / 2, Hh / 2); ctx.fillText('銜接', (N + G * 1.5) * CS, Hh / 2);
+  if (gb) ctx.fillText(`銜接 ${gb}`, gb * CS / 2, Hh / 2);
+  if (ga) ctx.fillText('下一關', (N + gb + ga / 2) * CS, Hh / 2);
 
   // 通關路線與卡住位置
   if ($('fPath').checked && results) {
@@ -426,7 +435,7 @@ function draw() {
   // 游標與矩形預覽
   if (stroke && tool === 'rect') {
     const a = stroke.start, b = stroke.last;
-    const x0 = (Math.min(a.c, b.c) + G) * CS, y0 = Math.min(a.r, b.r) * CS;
+    const x0 = (Math.min(a.c, b.c) + gb) * CS, y0 = Math.min(a.r, b.r) * CS;
     ctx.fillStyle = stroke.erase ? 'rgba(255,80,90,.3)' : 'rgba(255,255,255,.25)';
     ctx.fillRect(x0, y0, (Math.abs(a.c - b.c) + 1) * CS, (Math.abs(a.r - b.r) + 1) * CS);
   }
@@ -434,8 +443,8 @@ function draw() {
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
     if (tool === 'pillar') {
       const top = hover.r <= 8, y0 = top ? 0 : hover.r * CS, y1 = top ? (hover.r + 1) * CS : Hh;
-      ctx.strokeRect((hover.c + G) * CS + 1, y0 + 1, CS - 2, y1 - y0 - 2);
-    } else ctx.strokeRect((hover.c + G) * CS + 1, hover.r * CS + 1, CS - 2, CS - 2);
+      ctx.strokeRect((hover.c + gb) * CS + 1, y0 + 1, CS - 2, y1 - y0 - 2);
+    } else ctx.strokeRect((hover.c + gb) * CS + 1, hover.r * CS + 1, CS - 2, CS - 2);
     ctx.lineWidth = 1;
   }
 }
@@ -444,9 +453,9 @@ function draw() {
 function exportText() {
   return '// Gravity Switch 手工關卡 —— 由地圖編輯器 (editor.html) 匯出\n' +
     "// rows：18 個字串，由上到下；'#' = 方塊，'.' = 空，'o' = 黃色方塊\n" +
-    '// 每關前面會自動接 3 格標準通道；d = 難度 1~5\n' +
+    '// d = 難度 1~5；conn = 關卡開頭自動接上的標準通道長度（格）\n' +
     'const HANDMADE_LEVELS = [\n' + levels.map(l =>
-      `  {\n    "name": ${JSON.stringify(l.name)},\n    "d": ${l.d},\n    "rows": [\n${l.rows.map(r => '      "' + r + '"').join(',\n')}\n    ]\n  }`).join(',\n') + '\n];\n';
+      `  {\n    "name": ${JSON.stringify(l.name)},\n    "d": ${l.d},\n    "conn": ${levelConn(l)},\n    "rows": [\n${l.rows.map(r => '      "' + r + '"').join(',\n')}\n    ]\n  }`).join(',\n') + '\n];\n';
 }
 function parseImport(text) {
   const a = text.indexOf('['), b = text.lastIndexOf(']');
