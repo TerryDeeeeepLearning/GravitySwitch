@@ -4,12 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Gravity Switch</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="theme-color" content="#0a0720">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
 <style>
   html, body { margin: 0; height: 100%; background: #000; overflow: hidden; touch-action: none;
     user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
-    font-family: 'Exo 2', system-ui, sans-serif; color: #fff; }
+    font-family: 'Orbitron', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif; color: #fff; }
+  /* 中文與說明文字用一般字體，比較好讀 */
+  .hint, #chDesc, .pNote, .pEmpty, .pItem, .achList li, .skin .nm, #toast, #quitFocus, .pGroup h3 span {
+    font-family: 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif; }
   #wrap { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); overflow: hidden; }
   canvas { display: block; width: 100%; height: 100%; }
   .hidden { display: none !important; }
@@ -21,12 +28,12 @@
 
   #menu { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
     background: linear-gradient(rgba(5,4,20,.35), rgba(5,4,20,.15) 40%, rgba(5,4,20,.45)); }
-  .title { margin-top: 3.2em; font-size: 3.35em; font-weight: 700; letter-spacing: .01em; line-height: 1;
-    text-shadow: 0 0 .35em rgba(255,255,255,.45); }
+  .title { margin-top: 3.2em; font-size: 2.3em; font-weight: 900; letter-spacing: .04em; line-height: 1.15; text-align: center;
+    text-shadow: 0 0 .35em rgba(255,255,255,.5), 0 0 1.2em rgba(190,90,255,.6); }
   .scores { display: flex; gap: 3em; margin-top: .6em; }
   .scores div { display: flex; flex-direction: column; align-items: center; line-height: 1; }
-  .scores b { font-size: 3.6em; font-weight: 700; }
-  .scores span { font-size: 1.6em; margin-top: .05em; }
+  .scores b { font-size: 3em; font-weight: 900; letter-spacing: .02em; }
+  .scores span { font-size: 1.25em; margin-top: .15em; letter-spacing: .12em; opacity: .8; }
   #newBest { font-size: 1.1em; color: #ffe65a; height: 1.4em; margin-top: .3em; text-shadow: 0 0 .5em rgba(255,230,90,.6); }
   .play { margin-top: 1.2em; width: 8.6em; height: 8.6em; border-radius: 50%; border: .38em solid #fff;
     background: rgba(10,8,30,.45); box-shadow: 0 0 1.6em rgba(255,255,255,.55), inset 0 0 1.2em rgba(255,255,255,.25);
@@ -41,7 +48,7 @@
     border-radius: 1em; padding: .1em .55em; font-size: 1em; font-weight: 700; white-space: nowrap; }
   .challenge { position: absolute; bottom: 0; left: 0; right: 0; padding: 1.4em 1em 2.2em; text-align: center;
     border-top: 1px solid rgba(255,255,255,.25); background: linear-gradient(rgba(0,0,0,.15), rgba(0,0,0,.55)); }
-  .chTitle { font-size: 2.2em; font-weight: 700; }
+  .chTitle { font-size: 1.6em; font-weight: 700; letter-spacing: .06em; }
   .chTitle small { font-size: .62em; font-weight: 500; }
   .chTitle small i { font-style: normal; opacity: .5; }
   #chDesc { font-size: 1.25em; margin-top: .2em; }
@@ -50,7 +57,7 @@
   .panel { position: absolute; inset: 1.2em; border-radius: 1.2em; background: rgba(12,9,34,.96);
     border: .12em solid rgba(255,255,255,.3); box-shadow: 0 0 2em rgba(0,0,0,.6); display: flex; flex-direction: column; }
   .panelHead { display: flex; align-items: center; justify-content: space-between; padding: 1em 1.2em .6em; }
-  .panelHead h2 { margin: 0; font-size: 2em; font-weight: 700; }
+  .panelHead h2 { margin: 0; font-size: 1.6em; font-weight: 900; letter-spacing: .08em; }
   .close { width: 2.4em; height: 2.4em; border-radius: 50%; border: .15em solid #fff; font-size: 1.1em; line-height: 1; }
   .panelBody { overflow-y: auto; padding: .4em 1.2em 1.2em; flex: 1; }
   .shopGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8em; }
@@ -74,6 +81,9 @@
   .achList .rw { margin-left: auto; font-weight: 700; display: flex; align-items: center; gap: .2em; white-space: nowrap; }
   .achList .rw svg { width: 1em; height: 1em; }
 
+  #btnMute { position: absolute; top: 3.1em; right: 1.1em; z-index: 5; width: 2.2em; height: 2.2em; border-radius: 50%;
+    border: .1em solid rgba(255,255,255,.45); background: rgba(10,8,30,.5); font-size: 1.1em; line-height: 1; opacity: .8; }
+  #btnMute:hover { opacity: 1; }
   #quitFocus { position: absolute; top: 2.6em; left: 1em; z-index: 5; font-size: 1em; padding: .35em .8em;
     border-radius: 1.2em; border: .1em solid rgba(255,255,255,.6); background: rgba(10,8,30,.7); }
   .pNote { font-size: 1.05em; opacity: .8; margin-bottom: .8em; line-height: 1.5; }
@@ -123,6 +133,7 @@
   </div>
 
   <button id="quitFocus" class="hidden">✕ 離開練習</button>
+  <button id="btnMute" title="音效開關（M）"></button>
 
   <div id="practice" class="panel hidden">
     <div class="panelHead"><h2>practice</h2><button class="close" data-close>✕</button></div>
@@ -142,6 +153,7 @@
 
 <script src="core.js"></script>
 <script src="levels.js"></script>
+<script src="audio.js"></script>
 <script>
 'use strict';
 
@@ -357,9 +369,11 @@ function startRun() {
   state = 'playing';
   closePanels(); $('menu').classList.add('hidden');
   $('quitFocus').classList.toggle('hidden', !(FOCUS && FOCUS.fromMenu));
+  Sound.unlock(); Sound.music(true);
 }
 
 function press() {
+  Sound.unlock();   // 瀏覽器要求先有使用者操作才能發聲
   if (state !== 'playing') return;
   if (p.grounded) doFlip(); else p.buffer = simTime;   // 空中按下：記住一次，著地時立刻切換
 }
@@ -367,6 +381,7 @@ function doFlip() {
   flipBody(p); run.flips++;
   const sy = p.g > 0 ? p.y : p.y + P;
   burst(p.x + P / 2, sy, 8, skinTrail(), 3, .35);
+  Sound.flip(p.g < 0);
 }
 
 function simStep() {
@@ -381,7 +396,7 @@ function simStep() {
   const cx = p.x + P / 2, cy = p.y + P / 2;
   for (const k of world.coins) {
     if (!k.taken && Math.abs(k.x - cx) < .62 && Math.abs(k.y - cy) < .62) {
-      k.taken = true; run.coins++; burst(k.x, k.y, 14, '#fff46e', 4, .45);
+      k.taken = true; run.coins++; burst(k.x, k.y, 14, '#fff46e', 4, .45); Sound.coin();
     }
   }
   run.score = Math.max(0, Math.floor((p.x - RUN_START_X) / CONFIG.COLS_PER_POINT));
@@ -395,6 +410,7 @@ function simStep() {
 
 function die() {
   state = 'dead'; deathT = 0; flash = 1; shake = 1;
+  Sound.death();
   if (FOCUS) FOCUS.deaths++;
   const pl = skinPal(curSkin(), clock);
   for (let i = 0; i < 34; i++) {
@@ -412,6 +428,7 @@ function endRun() {
   checkChallenges(true);
   persist();
   state = 'menu';
+  Sound.music(false);
   showMenu(isBest && run.score > 0);
 }
 
@@ -512,7 +529,7 @@ function render() {
   if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash * .85})`; ctx.fillRect(0, 0, W, H); }
 
   if (state !== 'menu' && !FOCUS) {   // 單關模式不計分，改用上方的狀態列
-    ctx.font = '700 66px "Exo 2", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.font = '900 58px Orbitron, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
     ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 10;
     ctx.fillStyle = '#fff'; ctx.fillText(run.score, W / 2, 112);
     ctx.shadowBlur = 0;
@@ -550,7 +567,10 @@ function frame(now) {
   if (state === 'playing') {
     acc += dt;
     while (acc >= DT && state === 'playing') { simStep(); acc -= DT; }
-    if (state === 'playing') { cam.x = p.x - CAM_OFFSET; emitTrail(dt); p.squash = Math.max(0, (p.squash || 0) - dt * 7); }
+    if (state === 'playing') {
+      cam.x = p.x - CAM_OFFSET; emitTrail(dt); p.squash = Math.max(0, (p.squash || 0) - dt * 7);
+      Sound.setIntensity(FOCUS ? (FOCUS.d - 1) / 4 : run.score / 150);   // 分數（或難度）越高，背景音越密
+    }
   } else if (state === 'dead') {
     deathT += dt;
     if (FOCUS && deathT > .7) startRun();          // 單關模式：死亡後自動重來
@@ -667,6 +687,7 @@ function startPractice(h) {
 }
 function quitFocus() {
   FOCUS = null;
+  Sound.music(false);
   $('quitFocus').classList.add('hidden');
   newWorld(); p = newPlayer(); cam.x = p.x - CAM_OFFSET; parts = []; flash = 0; shake = 0;
   ensureWorld(30);
@@ -679,6 +700,10 @@ $('btnShop').onclick = () => { renderShop(); $('shop').classList.remove('hidden'
 $('btnAch').onclick = () => { renderAch(); $('ach').classList.remove('hidden'); };
 $('btnPractice').onclick = () => { renderPractice(); $('practice').classList.remove('hidden'); };
 $('quitFocus').onclick = quitFocus;
+
+function syncMute() { $('btnMute').textContent = Sound.isMuted() ? '🔇' : '🔊'; }
+$('btnMute').onclick = e => { e.stopPropagation(); Sound.unlock(); Sound.toggleMute(); syncMute(); };
+syncMute();
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = closePanels);
 
 cv.addEventListener('pointerdown', e => { e.preventDefault(); press(); });
@@ -691,7 +716,8 @@ addEventListener('keydown', e => {
   } else if (e.code === 'Escape') {
     if (FOCUS && FOCUS.fromMenu && state !== 'menu') quitFocus();
     else closePanels();
-  } else if (e.code === 'KeyD') debug = !debug;
+  } else if (e.code === 'KeyM') { Sound.unlock(); Sound.toggleMute(); syncMute(); }
+  else if (e.code === 'KeyD') debug = !debug;
 });
 
 // 初始畫面：主選單背後放一段關卡
