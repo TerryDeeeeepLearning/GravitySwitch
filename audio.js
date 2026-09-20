@@ -9,7 +9,7 @@ const Sound = (() => {
   const BASE = 55;                            // A1
   const hz = n => BASE * Math.pow(2, n / 12);
 
-  const TRACK_VOL = 0.35;                     // 指定關卡用的 mp3 音量
+  const TRACK_VOL = 0.15;                     // 指定關卡用的 mp3 音量
 
   let ctx = null, master = null, musicBus = null, musicFilter = null, sfxBus = null, noiseBuf = null;
   let playing = false, timer = 0, nextTime = 0, step = 0, intensity = 0;
