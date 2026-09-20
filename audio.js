@@ -5,13 +5,18 @@
 const Sound = (() => {
   const MUTE_KEY = 'gravitySwitchMuted';
   const BPM = 128, STEP = 60 / BPM / 2;      // 八分音符
-  const MUSIC_VOL = 0.2, SFX_VOL = 0.5;
+  const MUSIC_VOL = 0.5, SFX_VOL = 0.5;
   const BASE = 55;                            // A1
   const hz = n => BASE * Math.pow(2, n / 12);
+
+  const TRACK_VOL = 0.35;                     // 指定關卡用的 mp3 音量
 
   let ctx = null, master = null, musicBus = null, musicFilter = null, sfxBus = null, noiseBuf = null;
   let playing = false, timer = 0, nextTime = 0, step = 0, intensity = 0;
   let muted = false, coinStreak = 0, lastCoinAt = 0;
+  // 音檔音軌（HTMLAudio，不走 Web Audio，這樣在 file:// 下也能播）
+  let trackEl = null, trackSrc = null, synthWanted = false;
+  const trackCache = new Map();
   try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch (e) {}
 
   // ---------- 編曲素材 ----------
@@ -154,6 +159,18 @@ const Sound = (() => {
     if (!playing || !ctx) return;
     while (nextTime < ctx.currentTime + 0.15) { scheduleStep(nextTime, step); nextTime += STEP; step++; }
   }
+  function startSynth(on) {
+    if (!ensure()) return;
+    if (on && !playing) {
+      playing = true; step = 0; nextTime = ctx.currentTime + 0.08;
+      newSection(0);
+      musicBus.gain.setTargetAtTime(MUSIC_VOL, ctx.currentTime, 0.2);
+      timer = setInterval(tick, 25);
+      tick();
+    } else if (!on && playing) {
+      playing = false; clearInterval(timer);
+    }
+  }
 
   return {
     unlock() {
@@ -166,21 +183,37 @@ const Sound = (() => {
       muted = !muted;
       try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch (e) {}
       if (master) master.gain.setTargetAtTime(muted ? 0 : 1, ctx.currentTime, 0.02);
+      if (trackEl) trackEl.volume = muted ? 0 : TRACK_VOL;
       return muted;
     },
     setIntensity(v) { intensity = Math.max(0, Math.min(1, v)); },
+
     music(on) {
-      if (!ensure()) return;
-      if (on && !playing) {
-        playing = true; step = 0; nextTime = ctx.currentTime + 0.08;
-        newSection(0);
-        musicBus.gain.setTargetAtTime(MUSIC_VOL, ctx.currentTime, 0.2);
-        timer = setInterval(tick, 25);
-        tick();
-      } else if (!on && playing) {
-        playing = false; clearInterval(timer);
-      }
+      synthWanted = on;
+      if (on && trackSrc) return;               // 有 mp3 在播的時候，合成音樂讓位
+      startSynth(on);
     },
+
+    // 指定關卡的 mp3：Sound.track('cool.mp3') 開始，Sound.track(null) 停止
+    track(src) {
+      if (src === trackSrc) return;
+      if (trackEl) { trackEl.pause(); try { trackEl.currentTime = 0; } catch (e) {} trackEl = null; }
+      trackSrc = src || null;
+      if (!trackSrc) { startSynth(synthWanted); return; }   // 停止 mp3 → 回到合成音樂
+      startSynth(false);                                     // 播 mp3 → 關掉合成音樂
+      let el = trackCache.get(src);
+      if (!el) {
+        el = new Audio(src);
+        el.loop = true; el.preload = 'auto';
+        trackCache.set(src, el);
+      }
+      el.volume = muted ? 0 : TRACK_VOL;
+      try { el.currentTime = 0; } catch (e) {}
+      const pr = el.play();
+      if (pr && pr.catch) pr.catch(() => {});                // 自動播放被擋時不要吵
+      trackEl = el;
+    },
+    trackPlaying: () => trackSrc,
 
     // 死亡：低頻爆裂 + 碎裂雜訊 + 玻璃破碎 + 四散碎片
     death() {
