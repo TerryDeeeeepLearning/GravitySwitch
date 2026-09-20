@@ -283,15 +283,16 @@ const TEST = (() => {
   try {
     const L = JSON.parse(decodeURIComponent(m[1]));
     const lv = parseLevel(L), d = clamp(L.d | 0, 1, 5);
-    const cols = stdCols(CONN).concat(lv.cols), path = validate(cols, d);
-    return { name: L.name || '未命名', d, cols, coins: lv.coins, path, valid: !!path, deaths: 0, best: 0 };
+    const conn = levelConn(L);
+    const cols = stdCols(conn).concat(lv.cols), path = validate(cols, d);
+    return { name: L.name || '未命名', d, conn, cols, coins: lv.coins, path, valid: !!path, deaths: 0, best: 0 };
   } catch (e) { return null; }
 })();
 if (TEST) { debug = true; addEventListener('hashchange', () => location.reload()); }
 
 function testSegment() {
-  const coins = TEST.coins.length ? TEST.coins.map(k => ({ x: k.x + CONN, y: k.y }))
-    : TEST.path ? placeCoins(TEST.path, TEST.cols.length, TEST.d) : [];
+  const coins = TEST.coins.length ? TEST.coins.map(k => ({ x: k.x + TEST.conn, y: k.y }))
+    : TEST.path ? placeCoins(TEST.path, TEST.cols.length, TEST.d, TEST.conn) : [];
   return { cols: TEST.cols, d: TEST.d, name: '★' + TEST.name, coins, requested: TEST.d };
 }
 
