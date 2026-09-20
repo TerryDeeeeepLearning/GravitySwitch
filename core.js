@@ -17,6 +17,8 @@ const CONFIG = {
   CHUNK_MAX: 8,
   THEME_POINTS: 15,     // 每幾分換一次配色
 
+  CONN: 5,              // 每關開頭的標準通道長度（格）預設值；個別關卡可以用 conn 欄位覆寫（在編輯器裡調整）
+
   // 手工關卡（levels.js，由地圖編輯器匯出）
   HANDMADE_CHANCE: 1,   // 該難度有手工關卡時，選用手工關卡的機率（1 = 只用手工關卡）
   HANDMADE_MIRROR: true,// 手工關卡隨機上下翻轉，一關當兩關用
@@ -41,7 +43,12 @@ const C0 = 3, F0 = 14;    // 標準天花板最底列 / 標準地板最上列
 const P = 0.8;            // 玩家方塊邊長（格）
 const DT = 1 / 120;       // 固定物理步長
 const EPS = 1e-4;
-const CONN = 3;         // 每關開頭的標準通道長度（格），確保關與關能接上
+// 每關開頭都會接一段標準通道，確保關與關之間銜接得上。
+// 長度預設用 CONFIG.CONN，個別關卡可用 conn 欄位覆寫（開頭就有障礙的關卡可以調長一點）
+const MAX_CONN = 20;
+function levelConn(L) {
+  return L && Number.isFinite(L.conn) ? clamp(Math.round(L.conn), 0, MAX_CONN) : CONFIG.CONN;
+}
 
 const rand = Math.random;
 const randInt = (a, b) => a + Math.floor(rand() * (b - a + 1));
@@ -203,12 +210,12 @@ function prepareHandmade() {
   const src = typeof HANDMADE_LEVELS !== 'undefined' ? HANDMADE_LEVELS : [];
   for (const L of src) {
     try {
-      const d = clamp(L.d | 0, 1, 5), lv = parseLevel(L);
+      const d = clamp(L.d | 0, 1, 5), lv = parseLevel(L), conn = levelConn(L);
       const variants = CONFIG.HANDMADE_MIRROR ? [lv, mirrorLevel(lv)] : [lv];
       variants.forEach((v, i) => {
-        const cols = stdCols(CONN).concat(v.cols);
+        const cols = stdCols(conn).concat(v.cols);
         const path = validate(cols, d);
-        if (path) HANDMADE.push({ name: L.name + (i ? '（翻轉）' : ''), d, cols, coins: v.coins, path });
+        if (path) HANDMADE.push({ name: L.name + (i ? '（翻轉）' : ''), d, conn, cols, coins: v.coins, path });
         else if (typeof console !== 'undefined') console.warn('手工關卡無法通關，已略過：', L.name, i ? '（翻轉）' : '');
       });
     } catch (e) {
@@ -228,7 +235,7 @@ function pickHandmade(pool) {
 }
 
 function handmadeSegment(lv, requested) {
-  const coins = lv.coins.length ? lv.coins.map(k => ({ x: k.x + CONN, y: k.y })) : placeCoins(lv.path, lv.cols.length, lv.d);
+  const coins = lv.coins.length ? lv.coins.map(k => ({ x: k.x + lv.conn, y: k.y })) : placeCoins(lv.path, lv.cols.length, lv.d, lv.conn);
   return { cols: lv.cols, d: lv.d, name: '★' + lv.name, coins, requested, handmade: true };
 }
 
@@ -406,7 +413,7 @@ function buildSegment(d) {
     const gens = GENS.filter(g => dd >= g.min && dd <= g.max);
     const tries = dd === d ? 40 : 15;
     for (let a = 0; a < tries; a++) {
-      const cols = stdCols(CONN), names = [];
+      const cols = stdCols(CONFIG.CONN), names = [];
       let prev = null;
       while (cols.length < N) {
         let g = pick(gens);
@@ -417,15 +424,15 @@ function buildSegment(d) {
         names.push(g.name); prev = g;
       }
       const path = validate(cols, dd);
-      if (path) return { cols, d: dd, name: names.join('+'), coins: placeCoins(path, cols.length, dd), requested: d };
+      if (path) return { cols, d: dd, name: names.join('+'), coins: placeCoins(path, cols.length, dd, CONFIG.CONN), requested: d };
     }
   }
   return { cols: stdCols(N), d: 0, name: 'flat', coins: [], requested: d };
 }
 
 // 黃色方塊沿著驗證出來的路徑擺放，保證吃得到
-function placeCoins(path, L, d) {
-  const cand = path.filter(p => p.x > CONN && p.x < L - 2);
+function placeCoins(path, L, d, conn) {
+  const cand = path.filter(p => p.x > (conn === undefined ? CONFIG.CONN : conn) && p.x < L - 2);
   if (!cand.length) return [];
   const air = cand.filter(p => p.air);
   const pool = air.length > 10 ? air : cand;
