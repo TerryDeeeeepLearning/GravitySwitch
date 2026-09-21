@@ -404,7 +404,7 @@ const HANDMADE_LEVELS = [
   },
   {
     "name": "過門3",
-    "d": 1,
+    "d": 2,
     "conn": 5,
     "rows": [
       "####.....##.....####",
