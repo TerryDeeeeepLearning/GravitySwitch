@@ -103,6 +103,22 @@
   .pItem .mi { margin-left: auto; font-size: .85em; opacity: .55; white-space: nowrap; }
   .pEmpty { opacity: .5; font-size: 1em; padding: .3em 0 .6em; }
 
+  /* 結算時彈出的貓咪 */
+  #catPop { position: absolute; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center;
+    background: rgba(4,3,16,.82); animation: catIn .28s ease-out; }
+  @keyframes catIn { from { opacity: 0; } to { opacity: 1; } }
+  .catCard { width: 82%; max-height: 80%; display: flex; flex-direction: column; align-items: center;
+    padding: 1em; border-radius: 1.2em; background: rgba(16,12,40,.95);
+    border: .14em solid rgba(255,255,255,.45); box-shadow: 0 0 2.4em rgba(0,0,0,.7);
+    animation: catPopIn .32s cubic-bezier(.2,1.5,.5,1); }
+  @keyframes catPopIn { from { transform: scale(.6); } to { transform: scale(1); } }
+  .catCard img { width: 100%; max-height: 22em; object-fit: contain; border-radius: .7em; background: #000; }
+  .catTitle { font-size: 1.9em; font-weight: 900; letter-spacing: .04em; margin-top: .5em; text-align: center; }
+  .catTitle.win { color: #ffe65a; text-shadow: 0 0 .6em rgba(255,230,90,.7); }
+  .catTitle.lose { color: #9fb4ff; }
+  .catSub { font-family: 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif;
+    font-size: 1.05em; opacity: .75; margin-top: .25em; text-align: center; }
+
   #toast { position: absolute; left: 50%; top: 9.5em; transform: translate(-50%, -.6em); opacity: 0; pointer-events: none;
     background: rgba(255,255,255,.95); color: #111; padding: .55em 1.1em; border-radius: 2em; font-size: 1.1em; font-weight: 700;
     white-space: nowrap; transition: opacity .25s, transform .25s; box-shadow: 0 0 1.2em rgba(255,255,255,.4); }
@@ -155,11 +171,20 @@
     <div class="panelBody"><ul class="achList" id="achList"></ul></div>
   </div>
 
+  <div id="catPop" class="hidden">
+    <div class="catCard">
+      <img id="catImg" alt="">
+      <div class="catTitle" id="catTitle"></div>
+      <div class="catSub" id="catSub"></div>
+    </div>
+  </div>
+
   <div id="toast"></div>
 </div>
 
 <script src="core.js"></script>
 <script src="levels.js"></script>
+<script src="cats.js"></script>
 <script src="audio.js"></script>
 <script>
 'use strict';
@@ -318,6 +343,37 @@ let parts = [], flash = 0, shake = 0, deathT = 0, clock = 0, lastScore = 0;
 let debug = /[?&]debug/.test(location.search);
 const cam = { x: 0 };
 
+// ---------- 結算的貓咪照片：超過 CAT_WIN_SCORE 分抽 win/，否則抽 lose/ ----------
+const CAT_WIN_SCORE = 80;
+const catPool = w => (w ? (typeof WIN_CATS !== 'undefined' ? WIN_CATS : []) : (typeof LOSE_CATS !== 'undefined' ? LOSE_CATS : []));
+let catPre = { win: null, lose: null };
+
+// 開局就先把這局可能用到的兩張讀進來，結算時才不會等圖
+function preloadCats() {
+  for (const w of [true, false]) {
+    const pool = catPool(w);
+    if (!pool.length) { catPre[w ? 'win' : 'lose'] = null; continue; }
+    const src = pool[Math.floor(Math.random() * pool.length)];
+    const img = new Image();
+    img.src = src;
+    catPre[w ? 'win' : 'lose'] = src;
+  }
+}
+function showCat(score) {
+  const win = score > CAT_WIN_SCORE;
+  const src = catPre[win ? 'win' : 'lose'] || (catPool(win)[0] || null);
+  if (!src) return;                                   // 沒有照片就不彈
+  const img = $('catImg');
+  img.onerror = () => hideCat();                      // 圖檔不見就別顯示破圖
+  img.src = src;
+  $('catTitle').textContent = win ? `${score} 分！` : `${score} 分`;
+  $('catTitle').className = 'catTitle ' + (win ? 'win' : 'lose');
+  $('catSub').textContent = win ? `超過 ${CAT_WIN_SCORE} 分，貓貓給你拍拍手` : `再拼一次，貓貓在等你破 ${CAT_WIN_SCORE} 分`;
+  $('catPop').classList.remove('hidden');
+}
+function hideCat() { $('catPop').classList.add('hidden'); }
+const catOpen = () => !$('catPop').classList.contains('hidden');
+
 // ---------- 指定關卡播放自己的音樂 ----------
 // 關卡名稱 → 音檔（路徑相對於 index.html）。進入該關才播，離開或死亡就停，之後回到合成音樂
 const LEVEL_BGM = {
@@ -383,9 +439,11 @@ function startRun() {
   newWorld(); p = newPlayer(); cam.x = p.x - CAM_OFFSET;
   run = { score: 0, coins: 0, flips: 0, maxD: 0 };
   segPtr = 0; simTime = 0; acc = 0; stepCount = 0; parts = []; flash = 0; shake = 0;
+  resetLandSeq();
   ensureWorld(30);
   state = 'playing';
-  closePanels(); $('menu').classList.add('hidden');
+  if (!FOCUS) preloadCats();
+  closePanels(); hideCat(); $('menu').classList.add('hidden');
   $('quitFocus').classList.toggle('hidden', !(FOCUS && FOCUS.fromMenu));
   Sound.unlock(); Sound.track(null); Sound.music(true);
 }
@@ -399,7 +457,6 @@ function doFlip() {
   flipBody(p); run.flips++;
   const sy = p.g > 0 ? p.y : p.y + P;
   burst(p.x + P / 2, sy, 8, skinTrail(), 3, .35);
-  Sound.flip(p.g < 0);
 }
 
 function simStep() {
@@ -409,7 +466,7 @@ function simStep() {
   if (p.justLanded) {
     p.squash = 1;
     burst(p.x + P / 2, p.g > 0 ? p.y + P : p.y, 6, 'rgba(255,255,255,1)', 2, .25);
-    Sound.land();
+    Sound.land(p.g < 0, landStep());
     if (simTime - p.buffer <= CONFIG.BUFFER_TIME) { p.buffer = -Infinity; doFlip(); }   // 空中預輸入：著地立刻反彈
   }
   const cx = p.x + P / 2, cy = p.y + P / 2;
@@ -429,8 +486,24 @@ function simStep() {
   if (++stepCount % 12 === 0 && !FOCUS) checkChallenges(false);
 }
 
+// 連續落地時的音階位置：同一側連著踩階梯才累積，往上一階升一階、往下一階降一階
+const landSeq = { idx: 0, t: -9, surf: 0, g: 1 };
+function resetLandSeq() { landSeq.idx = 0; landSeq.t = -9; }
+function landStep() {
+  const surf = p.g > 0 ? p.y + P : p.y;          // 接觸面的位置
+  const rise = landSeq.surf - surf;              // 正 = 這次落點比上次高
+  if (simTime - landSeq.t > 0.6 || p.g !== landSeq.g) landSeq.idx = 0;   // 隔太久或換邊就重來
+  else if (Math.abs(rise) >= 0.5) {
+    const stepN = Math.min(3, Math.round(Math.abs(rise)));
+    landSeq.idx = clamp(landSeq.idx + (rise > 0 ? stepN : -stepN), -10, 10);
+  }
+  landSeq.t = simTime; landSeq.surf = surf; landSeq.g = p.g;
+  return landSeq.idx;
+}
+
 function die() {
   state = 'dead'; deathT = 0; flash = 1; shake = 1;
+  resetLandSeq();
   Sound.track(null);   // 死亡就停掉關卡音樂
   Sound.death();
   if (FOCUS) FOCUS.deaths++;
@@ -452,6 +525,7 @@ function endRun() {
   state = 'menu';
   Sound.track(null); Sound.music(false);
   showMenu(isBest && run.score > 0);
+  showCat(run.score);
 }
 
 // ---------- 粒子 ----------
@@ -722,6 +796,7 @@ $('btnShop').onclick = () => { renderShop(); $('shop').classList.remove('hidden'
 $('btnAch').onclick = () => { renderAch(); $('ach').classList.remove('hidden'); };
 $('btnPractice').onclick = () => { renderPractice(); $('practice').classList.remove('hidden'); };
 $('quitFocus').onclick = quitFocus;
+$('catPop').onclick = hideCat;   // 點任何地方關掉貓咪
 
 function syncMute() { $('btnMute').textContent = Sound.isMuted() ? '🔇' : '🔊'; }
 $('btnMute').onclick = e => { e.stopPropagation(); Sound.unlock(); Sound.toggleMute(); syncMute(); };
@@ -733,10 +808,12 @@ addEventListener('keydown', e => {
   if (e.code === 'Space' || e.code === 'Enter') {
     e.preventDefault();
     if (e.repeat) return;
-    if (state === 'playing') press();
+    if (catOpen()) hideCat();                        // 貓咪還開著，先關掉而不是直接開新局
+    else if (state === 'playing') press();
     else if (state === 'menu' && !panelOpen()) startRun();
   } else if (e.code === 'Escape') {
-    if (FOCUS && FOCUS.fromMenu && state !== 'menu') quitFocus();
+    if (catOpen()) hideCat();
+    else if (FOCUS && FOCUS.fromMenu && state !== 'menu') quitFocus();
     else closePanels();
   } else if (e.code === 'KeyM') { Sound.unlock(); Sound.toggleMute(); syncMute(); }
   else if (e.code === 'KeyD') debug = !debug;
