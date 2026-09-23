@@ -1,15 +1,18 @@
 // Gravity Switch 音效：全部用 Web Audio 即時合成，不需要任何音檔
-// 對外介面：Sound.unlock() / Sound.music(bool) / Sound.death() / Sound.coin() / Sound.flip() / Sound.land()
+// 對外介面：Sound.unlock() / Sound.music(bool) / Sound.track(src) / Sound.death() / Sound.coin() / Sound.land()
 //           Sound.toggleMute() / Sound.isMuted() / Sound.setIntensity(0~1)
 'use strict';
 const Sound = (() => {
   const MUTE_KEY = 'gravitySwitchMuted';
   const BPM = 128, STEP = 60 / BPM / 2;      // 八分音符
-  const MUSIC_VOL = 0.5, SFX_VOL = 0.5;
+  const MUSIC_VOL = 0, SFX_VOL = 0.5;
   const BASE = 55;                            // A1
   const hz = n => BASE * Math.pow(2, n / 12);
+  // 大調五聲音階：把整數（可為負）轉成半音，連續落地時就能一階一階往上或往下
+  const PENTA_STEPS = [0, 2, 4, 7, 9];
+  const pentaSemi = i => 12 * Math.floor(i / 5) + PENTA_STEPS[((i % 5) + 5) % 5];
 
-  const TRACK_VOL = 0;                     // 指定關卡用的 mp3 音量
+  const TRACK_VOL = 0.35;                     // 指定關卡用的 mp3 音量
 
   let ctx = null, master = null, musicBus = null, musicFilter = null, sfxBus = null, noiseBuf = null;
   let playing = false, timer = 0, nextTime = 0, step = 0, intensity = 0;
@@ -262,14 +265,20 @@ const Sound = (() => {
       pluck(t, hz(60 + up), 0.09, 0.3, sfxBus);
       pluck(t + 0.05, hz(67 + up), 0.14, 0.26, sfxBus);
     },
-    // 每次音高、音色略有不同，不會聽膩
-    flip(up) {
+    // 落地：玻璃般的清脆聲
+    //   up   = true 表示貼在天花板上（音色更亮更高），false 是一般地板
+    //   step = 音階位置，連續踩階梯時由遊戲端累加／遞減，做出漸高或漸低
+    land(up, step) {
       if (!ensure()) return;
-      const t = ctx.currentTime, r = Math.random();
-      const base = (up ? 380 : 680) * (0.94 + Math.random() * 0.12);
-      tone(t, base, 0.13, r < 0.5 ? 'triangle' : 'sine', 0.2, sfxBus, up ? base * 2.2 : base * 0.48);
-      burstNoise(t, up ? 1400 : 900, 0.09, 0.07, 1.4, sfxBus, 'bandpass', up ? 3200 : 500);
+      const t = ctx.currentTime;
+      const base = up ? 784 : 523.25;                     // 天花板 G5 / 地板 C5
+      const freq = base * Math.pow(2, pentaSemi(step | 0) / 12);
+      // 玻璃的非諧和泛音；天花板用更高更疏的比例，聽起來更薄
+      const parts = up ? [[1, 0.26, 0.20], [3.01, 0.55, 0.10], [6.23, 0.28, 0.05]]
+                       : [[1, 0.28, 0.24], [2.76, 0.50, 0.12], [5.40, 0.24, 0.06]];
+      for (const [mul, vol, dur] of parts) tone(t, freq * mul, dur, 'sine', vol * 0.55, sfxBus);
+      // 敲擊的瞬間噪音，讓它「脆」
+      burstNoise(t, up ? 9000 : 6500, 0.018, 0.16, 2, sfxBus, 'highpass');
     },
-    land() { if (!ensure()) return; burstNoise(ctx.currentTime, 320 + Math.random() * 160, 0.05, 0.12, 2); },
   };
 })();
