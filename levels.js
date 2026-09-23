@@ -505,7 +505,7 @@ const HANDMADE_LEVELS = [
   {
     "name": "喪心病狂2",
     "d": 5,
-    "conn": 5,
+    "conn": 8,
     "rows": [
       "............",
       "............",
