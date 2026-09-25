@@ -439,7 +439,7 @@ function startRun() {
   newWorld(); p = newPlayer(); cam.x = p.x - CAM_OFFSET;
   run = { score: 0, coins: 0, flips: 0, maxD: 0 };
   segPtr = 0; simTime = 0; acc = 0; stepCount = 0; parts = []; flash = 0; shake = 0;
-  resetLandSeq();
+  resetLandSeq(); paint.clear();
   ensureWorld(30);
   state = 'playing';
   if (!FOCUS) preloadCats();
@@ -463,6 +463,7 @@ function simStep() {
   simTime += DT;
   stepBody(p, solidAt);
   if (p.dead) { die(); return; }
+  if (p.grounded) paintUnderPlayer();   // 貼著地形跑就一路染色
   if (p.justLanded) {
     p.squash = 1;
     burst(p.x + P / 2, p.g > 0 ? p.y + P : p.y, 6, 'rgba(255,255,255,1)', 2, .25);
@@ -484,6 +485,21 @@ function simStep() {
   if (segChanged) Sound.track(segBgm(world.segs[segPtr]));   // 進入 / 離開有指定音樂的關卡
   run.maxD = Math.max(run.maxD, world.segs[segPtr].d);
   if (++stepCount % 12 === 0 && !FOCUS) checkChallenges(false);
+}
+
+// ---------- 踩過的地形會被染成方塊的顏色 ----------
+// key = "欄:區塊起始列"，所以染的是「踩到的那一段柱子」，不會連對面那段一起染
+const paint = new Map();
+function paintKey(c, row) {
+  let r = row;
+  while (r > 0 && solidAt(c, r - 1)) r--;     // 往回找這段連續實心的起點
+  return c + ':' + r;
+}
+function paintUnderPlayer() {
+  const row = p.g > 0 ? Math.floor(p.y + P + .02) : Math.floor(p.y - .02);
+  const c0 = Math.floor(p.x + .02), c1 = Math.floor(p.x + P - .02);
+  const col = skinPal(curSkin(), clock);       // 彩虹造型會隨時間變色，沿路就是一條漸層
+  for (let c = c0; c <= c1; c++) if (solidAt(c, row)) paint.set(paintKey(c, row), col);
 }
 
 // 連續落地時的音階位置：同一側連著踩階梯才累積，往上一階升一階、往下一階降一階
@@ -572,8 +588,9 @@ function render() {
     while (r < ROWS) {
       if (!col[r]) { r++; continue; }
       let e = r; while (e + 1 < ROWS && col[e + 1]) e++;
-      // 同一欄中連續的實心合併成一塊，中間不再有接縫
-      boxes.push({ x0, x1, y0: r === 0 ? -CELL * 8 : r * CELL, y1: e === ROWS - 1 ? H + CELL * 8 : (e + 1) * CELL, pal: colorFor(c) });
+      // 同一欄中連續的實心合併成一塊，中間不再有接縫；被踩過的用染上的顏色
+      boxes.push({ x0, x1, y0: r === 0 ? -CELL * 8 : r * CELL, y1: e === ROWS - 1 ? H + CELL * 8 : (e + 1) * CELL,
+        pal: paint.get(c + ':' + r) || colorFor(c) });
       r = e + 1;
     }
   }
