@@ -1,0 +1,18 @@
+{
+	// Gravity Switch 排行榜 Worker 設定
+	"name": "gravity-scores",
+	"main": "worker.js",
+	"compatibility_date": "2026-09-01",
+	// 換成你自己的一串隨機字元（用來雜湊 IP，換了之後舊的限流紀錄會失效，僅此而已）
+	"vars": {
+		"SALT": "k7x2m9qp4vz8"
+	},
+	// 執行 npx wrangler d1 create gravity-scores 之後，把印出來的 database_id 貼進來
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "gravity-scores",
+			"database_id": "5b5565a2-d01e-4994-9353-d6b3ccd2071e"
+		}
+	]
+}
