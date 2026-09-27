@@ -228,7 +228,7 @@
 const SAVE_KEY = 'gravitySwitchSave_v1';
 function loadSave() {
   const def = { best: 0, coins: 0, owned: ['classic'], skin: 'classic', ch: 0, games: 0, coinsTotal: 0, distTotal: 0,
-    pid: '', pname: '' };   // pid = 排行榜用的隨機 ID，pname = 顯示名稱
+    pid: '', pname: '', lbBest: 0 };   // pid = 排行榜用的隨機 ID，pname = 顯示名稱，lbBest = 送上排行榜的最佳成績
   try { return Object.assign(def, JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch (e) { return def; }
 }
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
@@ -628,10 +628,13 @@ function endRun() {
   save.games++; save.coinsTotal += run.coins; save.distTotal += run.score; save.coins += run.coins;
   const isBest = run.score > save.best;
   if (isBest) save.best = run.score;
+  // 排行榜另外記一份成績，從 0 開始算，所以排行榜上線前的舊紀錄不會被送上去
+  const isLbBest = run.score > (save.lbBest || 0);
+  if (isLbBest) save.lbBest = run.score;
   lastScore = run.score;
   checkChallenges(true);
   persist();
-  if (isBest && run.score > 0) submitScore(run.score);   // 只有破自己紀錄才送，寫入量最小
+  if (isLbBest && run.score > 0) submitScore(run.score);   // 只有破排行榜紀錄才送，寫入量最小
   state = 'menu';
   Sound.track(null); Sound.music(false);
   showMenu(isBest && run.score > 0);
@@ -910,7 +913,7 @@ $('btnBoard').onclick = () => { $('board').classList.remove('hidden'); renderBoa
 $('bNameSave').onclick = async () => {
   save.pname = $('bNameInput').value.trim().slice(0, 12) || '玩家';
   persist();
-  if (save.best > 0) await submitScore(save.best);   // 讓榜上的名字跟著更新
+  if (save.lbBest > 0) await submitScore(save.lbBest);   // 讓榜上的名字跟著更新（只送已經上榜過的成績）
   renderBoard();
   toast('名字已更新');
 };
