@@ -47,7 +47,7 @@
     display: flex; align-items: center; justify-content: center; transition: transform .12s; }
   .play:active { transform: scale(.94); }
   .play svg { width: 4.4em; height: 4.4em; margin-left: .5em; }
-  .row { display: flex; gap: 2.4em; margin-top: 1.4em; }
+  .row { display: flex; gap: 1.5em; margin-top: 1.4em; }
   .round { position: relative; width: 5em; height: 5em; border-radius: 50%; border: .2em solid #fff;
     background: rgba(10,8,30,.45); box-shadow: 0 0 .8em rgba(255,255,255,.35); display: flex; align-items: center; justify-content: center; }
   .round svg { width: 2.6em; height: 2.6em; }
@@ -103,6 +103,26 @@
   .pItem .mi { margin-left: auto; font-size: .85em; opacity: .55; white-space: nowrap; }
   .pEmpty { opacity: .5; font-size: 1em; padding: .3em 0 .6em; }
 
+  /* 排行榜 */
+  .bName { display: flex; gap: .5em; margin-bottom: .8em; }
+  .bName input { flex: 1; min-width: 0; font: inherit; font-family: 'Noto Sans TC', system-ui, sans-serif;
+    font-size: 1.05em; padding: .45em .7em; border-radius: .5em; color: #fff;
+    background: rgba(255,255,255,.1); border: .1em solid rgba(255,255,255,.3); }
+  .bName button { font-size: 1.05em; padding: .45em 1em; border-radius: .5em;
+    background: rgba(255,255,255,.9); color: #111; font-weight: 700; }
+  .bMe { font-family: 'Noto Sans TC', system-ui, sans-serif; font-size: 1.05em; opacity: .85; margin-bottom: .6em; min-height: 1.5em; }
+  .bRow { display: flex; align-items: center; gap: .7em; padding: .45em .7em; border-radius: .5em; font-size: 1.05em; }
+  .bRow:nth-child(odd) { background: rgba(255,255,255,.05); }
+  .bRow.me { background: rgba(255,230,90,.18); box-shadow: inset 0 0 0 .1em rgba(255,230,90,.5); }
+  .bRow .rk { width: 2.2em; text-align: right; opacity: .6; font-weight: 700; }
+  .bRow .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-family: 'Noto Sans TC', system-ui, sans-serif; }
+  .bRow .sc { font-weight: 900; }
+  .bRow.top1 .rk, .bRow.top1 .sc { color: #ffd84a; }
+  .bRow.top2 .rk, .bRow.top2 .sc { color: #dfe6f0; }
+  .bRow.top3 .rk, .bRow.top3 .sc { color: #e0a06a; }
+  .bMsg { font-family: 'Noto Sans TC', system-ui, sans-serif; opacity: .6; padding: 1em .2em; font-size: 1.05em; }
+
   /* 結算時彈出的貓咪 */
   #catPop { position: absolute; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center;
     background: rgba(4,3,16,.82); animation: catIn .28s ease-out; }
@@ -141,6 +161,7 @@
     <div class="row">
       <button id="btnShop" class="round" aria-label="shop"><svg viewBox="0 0 24 24"><path d="M12 2.5l8.5 4.7v9.6L12 21.5l-8.5-4.7V7.2z M3.5 7.2L12 12l8.5-4.8 M12 12v9.5" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/></svg></button>
       <button id="btnPractice" class="round" aria-label="practice" title="練習單一關卡（不計分）"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="12" cy="12" r="4" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="12" cy="12" r="1.4" fill="#fff"/></svg></button>
+      <button id="btnBoard" class="round hidden" aria-label="leaderboard" title="排行榜"><svg viewBox="0 0 24 24"><path d="M9 20V9h6v11 M3 20v-6h6v6 M15 20v-8h6v8" fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 2.6l1.5 3 3.3.5-2.4 2.3.6 3.3-3-1.6-3 1.6.6-3.3L7.2 6.1l3.3-.5z" fill="#fff"/></svg></button>
       <button id="btnAch" class="round" aria-label="challenges"><svg viewBox="0 0 24 24"><path d="M7 3h10v5a5 5 0 01-10 0z M12 13v4 M8 21h8v-2.5H8z" fill="#fff" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/><path d="M7 5H4.2a3.2 3.2 0 003.3 4.2 M17 5h2.8a3.2 3.2 0 01-3.3 4.2" fill="none" stroke="#fff" stroke-width="1.6"/></svg><span class="badge" id="achPct">0%</span></button>
     </div>
     <div class="hint">點擊螢幕 / 空白鍵 切換重力</div>
@@ -163,6 +184,18 @@
     <div class="panelBody">
       <div class="pNote">選一關重複練習。<b>不計分、不影響最佳紀錄</b>，死亡後自動重來。按 Esc 或左上角按鈕離開。</div>
       <div id="practiceList"></div>
+    </div>
+  </div>
+
+  <div id="board" class="panel hidden">
+    <div class="panelHead"><h2>ranking</h2><button class="close" data-close>✕</button></div>
+    <div class="panelBody">
+      <div class="bName">
+        <input id="bNameInput" maxlength="12" placeholder="你的名字">
+        <button id="bNameSave">儲存</button>
+      </div>
+      <div id="bMe" class="bMe"></div>
+      <div id="bList"></div>
     </div>
   </div>
 
@@ -194,7 +227,8 @@
 // ============================================================
 const SAVE_KEY = 'gravitySwitchSave_v1';
 function loadSave() {
-  const def = { best: 0, coins: 0, owned: ['classic'], skin: 'classic', ch: 0, games: 0, coinsTotal: 0, distTotal: 0 };
+  const def = { best: 0, coins: 0, owned: ['classic'], skin: 'classic', ch: 0, games: 0, coinsTotal: 0, distTotal: 0,
+    pid: '', pname: '' };   // pid = 排行榜用的隨機 ID，pname = 顯示名稱
   try { return Object.assign(def, JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch (e) { return def; }
 }
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
@@ -342,6 +376,65 @@ let state = 'menu', world, p, run = null, segPtr = 0, simTime = 0, acc = 0, step
 let parts = [], flash = 0, shake = 0, deathT = 0, clock = 0, lastScore = 0;
 let debug = /[?&]debug/.test(location.search);
 const cam = { x: 0 };
+
+// ============================================================
+//  排行榜（Cloudflare Worker + D1，部署方式見 leaderboard/README.md）
+// ============================================================
+// 把部署後拿到的網址貼在這裡，例如 'https://gravity-scores.你的帳號.workers.dev'
+// 留空的話排行榜按鈕會自動隱藏，遊戲其他部分照常運作
+const LEADERBOARD_API = '';
+const BOARD_TOP = 20;
+
+function ensurePlayer() {
+  if (!save.pid) { save.pid = Math.random().toString(36).slice(2) + Date.now().toString(36); persist(); }
+  return save.pid;
+}
+async function apiFetch(path, opts) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 8000);           // 連不上就別一直等
+  try {
+    const r = await fetch(LEADERBOARD_API.replace(/\/$/, '') + path, Object.assign({ signal: ctl.signal }, opts));
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } finally { clearTimeout(timer); }
+}
+// 破紀錄時送分；失敗就安靜略過，不影響遊戲
+async function submitScore(score) {
+  if (!LEADERBOARD_API || !score) return;
+  try {
+    await apiFetch('/score', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: save.pname || '玩家', score, player: ensurePlayer() }),
+    });
+  } catch (e) { console.warn('[排行榜] 送出失敗：', e.message); }
+}
+
+async function renderBoard() {
+  const list = $('bList'), me = $('bMe');
+  $('bNameInput').value = save.pname || '';
+  list.innerHTML = '<div class="bMsg">載入中…</div>';
+  me.textContent = '';
+  try {
+    const d = await apiFetch(`/top?n=${BOARD_TOP}&player=${encodeURIComponent(ensurePlayer())}`);
+    list.innerHTML = '';
+    if (!d.top.length) { list.innerHTML = '<div class="bMsg">還沒有人上榜，快去搶第一</div>'; }
+    for (const r of d.top) {
+      const div = document.createElement('div');
+      div.className = 'bRow' + (r.me ? ' me' : '') + (r.rank <= 3 ? ' top' + r.rank : '');
+      div.innerHTML = '<span class="rk"></span><span class="nm"></span><span class="sc"></span>';
+      div.children[0].textContent = r.rank;
+      div.children[1].textContent = r.name;
+      div.children[2].textContent = r.score;
+      list.appendChild(div);
+    }
+    me.textContent = d.me
+      ? `你的最佳成績 ${d.me.score} 分，目前第 ${d.me.rank} 名（共 ${d.total} 人）`
+      : `共 ${d.total} 人上榜，你還沒有成績`;
+  } catch (e) {
+    list.innerHTML = '<div class="bMsg">連不上排行榜伺服器，請稍後再試</div>';
+  }
+}
 
 // ---------- 結算的貓咪照片：超過 CAT_WIN_SCORE 分抽 win/，否則抽 lose/ ----------
 const CAT_WIN_SCORE = 80;
@@ -538,6 +631,7 @@ function endRun() {
   lastScore = run.score;
   checkChallenges(true);
   persist();
+  if (isBest && run.score > 0) submitScore(run.score);   // 只有破自己紀錄才送，寫入量最小
   state = 'menu';
   Sound.track(null); Sound.music(false);
   showMenu(isBest && run.score > 0);
@@ -724,7 +818,7 @@ function showMenu(isBest) {
   $('menu').classList.remove('hidden');
 }
 
-const PANELS = ['shop', 'ach', 'practice'];
+const PANELS = ['shop', 'ach', 'practice', 'board'];
 function closePanels() { PANELS.forEach(id => $(id).classList.add('hidden')); }
 function panelOpen() { return PANELS.some(id => !$(id).classList.contains('hidden')); }
 
@@ -812,6 +906,15 @@ $('play').onclick = e => { e.stopPropagation(); FOCUS = null; startRun(); };
 $('btnShop').onclick = () => { renderShop(); $('shop').classList.remove('hidden'); };
 $('btnAch').onclick = () => { renderAch(); $('ach').classList.remove('hidden'); };
 $('btnPractice').onclick = () => { renderPractice(); $('practice').classList.remove('hidden'); };
+$('btnBoard').onclick = () => { $('board').classList.remove('hidden'); renderBoard(); };
+$('bNameSave').onclick = async () => {
+  save.pname = $('bNameInput').value.trim().slice(0, 12) || '玩家';
+  persist();
+  if (save.best > 0) await submitScore(save.best);   // 讓榜上的名字跟著更新
+  renderBoard();
+  toast('名字已更新');
+};
+if (LEADERBOARD_API) $('btnBoard').classList.remove('hidden');
 $('quitFocus').onclick = quitFocus;
 $('catPop').onclick = hideCat;   // 點任何地方關掉貓咪
 
