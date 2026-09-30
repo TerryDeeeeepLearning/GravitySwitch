@@ -104,7 +104,7 @@ const HANDMADE_LEVELS = [
   },
   {
     "name": "盒子",
-    "d": 4,
+    "d": 5,
     "conn": 5,
     "rows": [
       "......",
@@ -454,7 +454,7 @@ const HANDMADE_LEVELS = [
   },
   {
     "name": "x",
-    "d": 2,
+    "d": 3,
     "conn": 5,
     "rows": [
       "################",
