@@ -12,7 +12,7 @@ const Sound = (() => {
   const PENTA_STEPS = [0, 2, 4, 7, 9];
   const pentaSemi = i => 12 * Math.floor(i / 5) + PENTA_STEPS[((i % 5) + 5) % 5];
 
-  const TRACK_VOL = 0.1;                     // 指定關卡用的 mp3 音量
+  const TRACK_VOL = 0.35;                     // 指定關卡用的 mp3 音量
 
   let ctx = null, master = null, musicBus = null, musicFilter = null, sfxBus = null, noiseBuf = null;
   let playing = false, timer = 0, nextTime = 0, step = 0, intensity = 0;
@@ -84,6 +84,11 @@ const Sound = (() => {
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     newSection(0);
     return ctx;
+  }
+  // iOS Safari 的 <audio>.volume 是唯讀的（永遠是 1），只設 volume 關不掉聲音，所以同時設 muted
+  function applyTrackMute(el) {
+    el.muted = muted;
+    try { el.volume = muted ? 0 : TRACK_VOL; } catch (e) {}
   }
   function noise() { const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; return s; }
 
@@ -186,7 +191,7 @@ const Sound = (() => {
       muted = !muted;
       try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch (e) {}
       if (master) master.gain.setTargetAtTime(muted ? 0 : 1, ctx.currentTime, 0.02);
-      if (trackEl) trackEl.volume = muted ? 0 : TRACK_VOL;
+      if (trackEl) applyTrackMute(trackEl);
       return muted;
     },
     setIntensity(v) { intensity = Math.max(0, Math.min(1, v)); },
@@ -215,7 +220,7 @@ const Sound = (() => {
         });
         trackCache.set(src, el);
       }
-      el.volume = muted ? 0 : TRACK_VOL;
+      applyTrackMute(el);
       try { el.currentTime = 0; } catch (e) {}
       const pr = el.play();
       if (pr && pr.catch) pr.catch(() => {});                // 自動播放被擋時不要吵
