@@ -139,6 +139,24 @@
   #btnFb { position: absolute; top: 1em; left: 1em; width: 2.4em; height: 2.4em; border-radius: 50%;
     border: .1em solid rgba(255,255,255,.45); background: rgba(10,8,30,.5); font-size: 1.1em; line-height: 1; opacity: .85; }
   #btnFb:hover { opacity: 1; }
+
+  /* 通知 */
+  #btnNews { position: absolute; top: 1em; left: 4em; width: 2.4em; height: 2.4em; border-radius: 50%;
+    border: .1em solid rgba(255,255,255,.45); background: rgba(10,8,30,.5); font-size: 1.1em; line-height: 1; opacity: .85; }
+  #btnNews:hover { opacity: 1; }
+  #newsDot { position: absolute; top: -.35em; right: -.35em; min-width: 1.5em; height: 1.5em; padding: 0 .35em;
+    border-radius: 1em; background: #ff2f4d; color: #fff; font-size: .75em; font-weight: 900; line-height: 1.5em;
+    text-align: center; box-shadow: 0 0 .5em rgba(255,47,77,.9); animation: newsPulse 1.6s ease-in-out infinite; }
+  @keyframes newsPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+  .nsItem { padding: .9em 0; border-bottom: 1px solid rgba(255,255,255,.12);
+    font-family: 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif; }
+  .nsItem:last-child { border-bottom: 0; }
+  .nsHead { display: flex; align-items: baseline; gap: .6em; }
+  .nsTitle { font-size: 1.2em; font-weight: 700; }
+  .nsDate { font-size: .9em; opacity: .5; margin-left: auto; white-space: nowrap; }
+  .nsNew { background: #ff2f4d; color: #fff; font-size: .75em; font-weight: 900; padding: .1em .5em; border-radius: 1em; }
+  .nsBody { margin: .5em 0 0; padding-left: 1.2em; font-size: 1.05em; line-height: 1.7; opacity: .88; }
+  .nsBody li { margin: .2em 0; }
   .fb textarea, .fb input { width: 100%; box-sizing: border-box; font: inherit; font-size: 1.05em; color: #fff;
     padding: .55em .7em; border-radius: .5em; background: rgba(255,255,255,.1); border: .1em solid rgba(255,255,255,.3);
     user-select: text; -webkit-user-select: text; }
@@ -199,6 +217,7 @@
     </div>
     <div class="hint">點擊螢幕 / 空白鍵 切換重力</div>
     <button id="btnFb" class="hidden" title="意見箱">✉</button>
+    <button id="btnNews" title="更新通知">🔔<span id="newsDot" class="hidden">1</span></button>
     <div class="challenge">
       <div class="chTitle">challenge <small><span id="chNum">1</span><i>/<span id="chTotal">20</span></i></small></div>
       <div id="chDesc"></div>
@@ -234,6 +253,11 @@
       <div id="bMe" class="bMe"></div>
       <div id="bList"></div>
     </div>
+  </div>
+
+  <div id="news" class="panel hidden">
+    <div class="panelHead"><h2>news</h2><button class="close" data-close>✕</button></div>
+    <div class="panelBody"><div id="newsList"></div></div>
   </div>
 
   <div id="feedback" class="panel hidden">
@@ -280,6 +304,7 @@
 const SAVE_KEY = 'gravitySwitchSave_v1';
 function loadSave() {
   const def = { best: 0, coins: 0, owned: ['classic'], skin: 'classic', ch: 0, games: 0, coinsTotal: 0, distTotal: 0,
+    newsRead: 0,   // 看過的最新一則公告 id
     pid: '', pname: '', lbBest: 0 };   // pid = 排行榜用的隨機 ID，pname = 顯示名稱，lbBest = 送上排行榜的最佳成績
   let s = def;
   try { s = Object.assign(def, JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch (e) {}
@@ -1042,7 +1067,65 @@ $('btnFb').onclick = openFeedback;
 $('fbSend').onclick = sendFeedback;
 $('fbText').oninput = () => { $('fbCount').textContent = `${$('fbText').value.length}/1000`; };
 
-const PANELS = ['shop', 'ach', 'practice', 'board', 'feedback'];
+// ---------- 更新通知 ----------
+// 要發新公告就在最上面加一筆，id 用遞增的數字。玩家看過的最大 id 記在存檔裡，
+// 只要新公告的 id 比它大，鈴鐺右上角就會出現紅色數字
+const NEWS = [
+  {
+    id: 3, date: '2026-10-01', title: '新模式、分模式排行榜、意見箱',
+    body: [
+      '新增<b>瘋狂模式</b>：每過一關，整個畫面上下翻轉一次',
+      '新增<b>隱形模式</b>：20 分開始方塊慢慢變透明，60 分完全消失',
+      '排行榜分成<b>經典 / 瘋狂 / 隱形</b>三個榜，各玩各的',
+      '遊戲中會顯示<b>下一個要超越的玩家</b>，超過時有提示',
+      '新增<b>意見箱</b>（左上角 ✉），建議、bug、想要的關卡都可以寄給作者',
+      '新增 5 個關卡，總共 25 關',
+      '修正 iPhone 靜音後關卡音樂還會響的問題',
+    ],
+  },
+  {
+    id: 2, date: '2026-09-28', title: '排行榜上線',
+    body: [
+      '新增<b>線上排行榜</b>，可以自己取名字',
+      '排行榜成績<b>從上線那刻開始算</b>，之前的本機紀錄不會上傳',
+      '結算時會跳出<b>貓咪照片</b>，超過 80 分是慶祝版',
+    ],
+  },
+  {
+    id: 1, date: '2026-09-26', title: '手感與特效更新',
+    body: [
+      '切換重力變得更俐落，空中先按也會在著地瞬間反彈',
+      '踩過的地形會被<b>染成方塊的顏色</b>，換造型就換顏色',
+      '落地改成<b>清脆的玻璃聲</b>，連續踩階梯會有漸高或漸低的音階',
+      '新增<b>練習模式</b>，可以單獨重複練任何一關',
+    ],
+  },
+];
+const newsUnread = () => NEWS.filter(n => n.id > (save.newsRead || 0)).length;
+function syncNewsDot() {
+  const n = newsUnread();
+  $('newsDot').textContent = n;
+  $('newsDot').classList.toggle('hidden', n === 0);
+}
+function openNews() {
+  const box = $('newsList'); box.innerHTML = '';
+  const read = save.newsRead || 0;
+  for (const it of NEWS) {
+    const div = document.createElement('div');
+    div.className = 'nsItem';
+    div.innerHTML = `<div class="nsHead"><span class="nsTitle"></span>${it.id > read ? '<span class="nsNew">NEW</span>' : ''}` +
+      `<span class="nsDate">${it.date}</span></div><ul class="nsBody">${it.body.map(b => `<li>${b}</li>`).join('')}</ul>`;
+    div.querySelector('.nsTitle').textContent = it.title;
+    box.appendChild(div);
+  }
+  $('news').classList.remove('hidden');
+  // 看過了就把紅點清掉
+  save.newsRead = Math.max(...NEWS.map(n => n.id), save.newsRead || 0);
+  persist(); syncNewsDot();
+}
+$('btnNews').onclick = openNews;
+
+const PANELS = ['shop', 'ach', 'practice', 'board', 'feedback', 'news'];
 function closePanels() { PANELS.forEach(id => $(id).classList.add('hidden')); }
 function panelOpen() { return PANELS.some(id => !$(id).classList.contains('hidden')); }
 
@@ -1150,6 +1233,7 @@ $('catPop').onclick = hideCat;   // 點任何地方關掉貓咪
 function syncMute() { $('btnMute').textContent = Sound.isMuted() ? '🔇' : '🔊'; }
 $('btnMute').onclick = e => { e.stopPropagation(); Sound.unlock(); Sound.toggleMute(); syncMute(); };
 syncMute();
+syncNewsDot();
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = closePanels);
 
 cv.addEventListener('pointerdown', e => { e.preventDefault(); press(); });
