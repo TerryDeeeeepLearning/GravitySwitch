@@ -1,0 +1,8 @@
+# wrangler 的本機暫存（含帳號資訊）
+leaderboard/.wrangler/
+
+# 排行榜備份，內含玩家 ID 與 IP 雜湊，不要公開
+leaderboard/backup-*.sql
+
+# 從 GitHub 下載的 zip 解壓後的副本
+GravitySwitch-main/
