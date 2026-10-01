@@ -46,7 +46,7 @@
   /* 模式選擇 */
   .modes { display: flex; margin-top: .3em; border: .12em solid rgba(255,255,255,.7); border-radius: 2em; overflow: hidden;
     background: rgba(10,8,30,.45); }
-  .modes button { font-size: 1.1em; font-weight: 700; padding: .4em 1.1em; letter-spacing: .05em; opacity: .7; }
+  .modes button { font-size: 1.05em; font-weight: 700; padding: .4em .85em; letter-spacing: .03em; opacity: .7; }
   .modes button + button { border-left: .1em solid rgba(255,255,255,.35); }
   .modes button.on { background: #fff; color: #111; opacity: 1; }
   .modeDesc { font-size: .95em; opacity: .7; margin-top: .4em; height: 1.4em; }
@@ -140,6 +140,33 @@
     border: .1em solid rgba(255,255,255,.45); background: rgba(10,8,30,.5); font-size: 1.1em; line-height: 1; opacity: .85; }
   #btnFb:hover { opacity: 1; }
 
+  /* 暫停 */
+  #btnPause { position: absolute; top: 1em; left: 1em; z-index: 6; width: 2.4em; height: 2.4em; border-radius: .6em;
+    border: .1em solid rgba(255,255,255,.5); background: rgba(10,8,30,.55); font-size: 1.1em; line-height: 1; opacity: .85; }
+  #btnPause:hover { opacity: 1; }
+  #pause { position: absolute; inset: 0; z-index: 9; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 1em; background: rgba(4,3,16,.85); }
+  #pause h2 { margin: 0 0 .3em; font-size: 2.2em; font-weight: 900; letter-spacing: .1em; }
+  .pzBtn { width: 11em; padding: .7em 0; border-radius: .7em; font-size: 1.2em; font-weight: 700; text-align: center;
+    border: .12em solid rgba(255,255,255,.5); background: rgba(255,255,255,.08);
+    font-family: 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif; }
+  .pzBtn.main { background: rgba(255,255,255,.9); color: #111; border-color: #fff; }
+  .pzVol { width: 13em; display: flex; align-items: center; gap: .6em; margin-top: .4em;
+    font-family: 'Noto Sans TC', system-ui, sans-serif; font-size: 1.05em; }
+  .pzVol input { flex: 1; min-width: 0; accent-color: #b15cff; }
+  .pzVol b { width: 2.6em; text-align: right; font-weight: 700; }
+
+  /* 雙人模式結算 */
+  #vsEnd { position: absolute; inset: 0; z-index: 9; display: flex; align-items: center; justify-content: center;
+    background: rgba(4,3,16,.85); animation: catIn .25s ease-out; }
+  .vsCard { display: flex; flex-direction: column; align-items: center; gap: .7em; padding: 1.4em 2em;
+    border-radius: 1.2em; background: rgba(16,12,40,.95); border: .14em solid rgba(255,255,255,.45); }
+  .vsTitle { font-size: 2.6em; font-weight: 900; letter-spacing: .06em; }
+  .vsTitle.p1 { color: #ff6a4a; text-shadow: 0 0 .6em rgba(255,106,74,.7); }
+  .vsTitle.p2 { color: #4ab8ff; text-shadow: 0 0 .6em rgba(74,184,255,.7); }
+  .vsTitle.p0 { color: #ffe65a; }
+  .vsSub { font-family: 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif; font-size: 1.1em; opacity: .8; margin-bottom: .3em; }
+
   /* 通知 */
   #btnNews { position: absolute; top: 1em; left: 4em; width: 2.4em; height: 2.4em; border-radius: 50%;
     border: .1em solid rgba(255,255,255,.45); background: rgba(10,8,30,.5); font-size: 1.1em; line-height: 1; opacity: .85; }
@@ -205,7 +232,7 @@
     </div>
     <div id="newBest"></div>
     <div class="modes" id="modes">
-      <button data-mode="classic">經典</button><button data-mode="crazy">瘋狂</button><button data-mode="invisible">隱形</button>
+      <button data-mode="classic">經典</button><button data-mode="crazy">瘋狂</button><button data-mode="invisible">隱形</button><button data-mode="versus">雙人</button>
     </div>
     <div class="modeDesc" id="modeDesc"></div>
     <button id="play" class="play" aria-label="play"><svg viewBox="0 0 24 24"><path d="M6 3.5l15 8.5-15 8.5z" fill="#fff"/></svg></button>
@@ -227,6 +254,25 @@
   <div id="shop" class="panel hidden">
     <div class="panelHead"><h2>skins</h2><button class="close" data-close>✕</button></div>
     <div class="panelBody"><div class="shopGrid" id="shopGrid"></div></div>
+  </div>
+
+  <button id="btnPause" class="hidden" title="暫停（Esc）">⏸</button>
+
+  <div id="vsEnd" class="hidden">
+    <div class="vsCard">
+      <div class="vsTitle" id="vsTitle"></div>
+      <div class="vsSub" id="vsSub"></div>
+      <button id="vsAgain" class="pzBtn main">再玩一次</button>
+      <button id="vsHome" class="pzBtn">回到主畫面</button>
+    </div>
+  </div>
+
+  <div id="pause" class="hidden">
+    <h2>paused</h2>
+    <button id="pzResume" class="pzBtn main">繼續遊戲</button>
+    <button id="pzHome" class="pzBtn">回到主畫面</button>
+    <div class="pzVol"><span>🔊</span><input id="pzVolRange" type="range" min="0" max="100" step="5"><b id="pzVolNum">100%</b></div>
+    <button id="pzMute" class="pzBtn">靜音：關</button>
   </div>
 
   <button id="quitFocus" class="hidden">✕ 離開練習</button>
@@ -321,7 +367,9 @@ const MODES = {
   classic:   { name: '經典', desc: '原本的玩法' },
   crazy:     { name: '瘋狂', desc: '每過一關，整個畫面上下翻轉一次' },
   invisible: { name: '隱形', desc: '20 分起方塊漸漸隱形，60 分完全消失' },
+  versus:    { name: '雙人', desc: '橫式畫面，一人一邊，撐到最後的獲勝', vs: true },
 };
+const SOLO_MODES = Object.keys(MODES).filter(m => !MODES[m].vs);   // 有排行榜的模式
 const INVIS_START = 20, INVIS_END = 60;   // 隱形模式：從幾分開始變透明、幾分完全消失
 const save = loadSave();
 const bestOf = m => save.bests[m] || 0;
@@ -464,7 +512,7 @@ const stars = Array.from({ length: 150 }, () => ({ x: Math.random(), y: Math.ran
 // ============================================================
 //  遊戲狀態
 // ============================================================
-let state = 'menu', world, p, run = null, segPtr = 0, simTime = 0, acc = 0, stepCount = 0;
+let state = 'menu', world, p, p2 = null, vsWinner = null, run = null, segPtr = 0, simTime = 0, acc = 0, stepCount = 0;
 let parts = [], flash = 0, shake = 0, deathT = 0, clock = 0, lastScore = 0;
 let debug = /[?&]debug/.test(location.search);
 const cam = { x: 0 };
@@ -684,45 +732,108 @@ function solidAt(c, r) {
   if (!col) return 0;
   return col[r < 0 ? 0 : r >= ROWS ? ROWS - 1 : r];
 }
-function newPlayer() { return { x: RUN_START_X, y: F0 - P, s: P, vy: 0, g: 1, grounded: true, dead: false, justLanded: false, n: 0, buffer: -Infinity }; }
+// g = 1 從地板出發，g = -1 從天花板出發（雙人模式的第二位玩家）
+function newPlayer(g) {
+  const up = g < 0;
+  return { x: RUN_START_X, y: up ? C0 + 1 : F0 - P, s: P, vy: 0, g: up ? -1 : 1,
+    grounded: true, dead: false, justLanded: false, n: 0, buffer: -Infinity,
+    seq: { idx: 0, t: -9, surf: 0, g: up ? -1 : 1 } };   // seq = 這個人自己的落地音階
+}
+// 雙人模式：第二位玩家用一個和你不同的顏色，兩顆才分得出來
+function vsSkin() {
+  const mine = curSkin().id;
+  return SKINS.find(s => !s.rainbow && s.id !== mine && ['ice', 'lime', 'gold', 'pink'].includes(s.id)) || SKINS[1];
+}
 
 function startRun() {
-  newWorld(); p = newPlayer(); cam.x = p.x - CAM_OFFSET;
+  const vs = !FOCUS && save.mode === 'versus';
+  newWorld(); p = newPlayer(1); cam.x = p.x - CAM_OFFSET;
+  p2 = vs ? newPlayer(-1) : null;        // 第二位玩家從天花板出發
+  vsWinner = null;
   run = { score: 0, coins: 0, flips: 0, maxD: 0, mode: FOCUS ? null : save.mode };   // 練習 / 試玩不套用模式
   segPtr = 0; simTime = 0; acc = 0; stepCount = 0; parts = []; flash = 0; shake = 0;
   view.angle = view.target = 0; lastTarget = null; passedT = -9;
-  resetLandSeq(); paint.clear();
+  paint.clear();
   ensureWorld(30);
   state = 'playing';
-  if (!FOCUS) { preloadCats(); loadTargets(run.mode); }
+  if (!FOCUS && !vs) { preloadCats(); loadTargets(run.mode); }
   closePanels(); hideCat(); $('menu').classList.add('hidden');
+  $('vsEnd').classList.add('hidden');
+  $('pause').classList.add('hidden');
+  $('btnPause').classList.remove('hidden');
   $('quitFocus').classList.toggle('hidden', !(FOCUS && FOCUS.fromMenu));
   Sound.unlock(); Sound.track(null); Sound.music(true);
 }
 
-function press() {
+// ---------- 暫停 ----------
+function pauseGame() {
+  if (state !== 'playing') return;
+  state = 'paused';
+  Sound.pauseAll(true);
+  syncVolUI();
+  $('pause').classList.remove('hidden');
+}
+function resumeGame() {
+  if (state !== 'paused') return;
+  $('pause').classList.add('hidden');
+  Sound.pauseAll(false);
+  acc = 0; last = performance.now();   // 暫停期間的時間不要補算進物理
+  state = 'playing';
+}
+function pauseToMenu() {
+  $('pause').classList.add('hidden');
+  Sound.pauseAll(false);
+  if (FOCUS && FOCUS.fromMenu) { state = 'playing'; quitFocus(); return; }   // 練習模式回選單
+  state = 'playing';
+  if (isMode('versus')) { endVersus(null); return; }
+  endRun();   // 當作這局結束，分數照常結算
+}
+function syncVolUI() {
+  const v = Math.round(Sound.getVolume() * 100);
+  $('pzVolRange').value = v;
+  $('pzVolNum').textContent = v + '%';
+  $('pzMute').textContent = '靜音：' + (Sound.isMuted() ? '開' : '關');
+}
+$('btnPause').onclick = e => { e.stopPropagation(); pauseGame(); };
+$('pzResume').onclick = resumeGame;
+$('pzHome').onclick = pauseToMenu;
+$('pzMute').onclick = () => { Sound.unlock(); Sound.toggleMute(); syncVolUI(); syncMute(); };
+$('pzVolRange').oninput = e => { Sound.unlock(); Sound.setVolume(e.target.value / 100); syncVolUI(); };
+
+// who = 1 或 2（雙人模式的第二位玩家）
+function press(who) {
   Sound.unlock();   // 瀏覽器要求先有使用者操作才能發聲
   if (state !== 'playing') return;
-  if (p.grounded) doFlip(); else p.buffer = simTime;   // 空中按下：記住一次，著地時立刻切換
+  const b = who === 2 ? p2 : p;
+  if (!b || b.dead) return;
+  if (b.grounded) doFlip(b); else b.buffer = simTime;   // 空中按下：記住一次，著地時立刻切換
 }
-function doFlip() {
-  flipBody(p); run.flips++;
-  const sy = p.g > 0 ? p.y : p.y + P;
-  burst(p.x + P / 2, sy, 8, skinTrail(), 3, .35, ghostAlpha());
+function doFlip(b) {
+  b = b || p;
+  flipBody(b); run.flips++;
+  const sy = b.g > 0 ? b.y : b.y + P;
+  burst(b.x + P / 2, sy, 8, b === p2 ? vsSkin().trail : skinTrail(), 3, .35, ghostAlpha());
+}
+
+// 一位玩家的一步：移動、染色、落地效果
+function stepPlayer(b, sk) {
+  stepBody(b, solidAt);
+  if (b.dead) return;
+  // 貼著地形跑就一路染色（隱形模式開始變透明後就不染，不然看染色就知道方塊在哪）
+  if (b.grounded && ghostAlpha() === 1) paintUnderPlayer(b, skinPal(sk, clock));
+  if (b.justLanded) {
+    b.squash = 1;
+    burst(b.x + P / 2, b.g > 0 ? b.y + P : b.y, 6, 'rgba(255,255,255,1)', 2, .25, ghostAlpha());
+    Sound.land(b.g < 0, landStep(b));
+    if (simTime - b.buffer <= CONFIG.BUFFER_TIME) { b.buffer = -Infinity; doFlip(b); }   // 空中預輸入：著地立刻反彈
+  }
 }
 
 function simStep() {
   simTime += DT;
-  stepBody(p, solidAt);
+  if (p2) return simStepVersus();
+  stepPlayer(p, curSkin());
   if (p.dead) { die(); return; }
-  // 貼著地形跑就一路染色（隱形模式開始變透明後就不染，不然看染色就知道方塊在哪）
-  if (p.grounded && ghostAlpha() === 1) paintUnderPlayer();
-  if (p.justLanded) {
-    p.squash = 1;
-    burst(p.x + P / 2, p.g > 0 ? p.y + P : p.y, 6, 'rgba(255,255,255,1)', 2, .25, ghostAlpha());
-    Sound.land(p.g < 0, landStep());
-    if (simTime - p.buffer <= CONFIG.BUFFER_TIME) { p.buffer = -Infinity; doFlip(); }   // 空中預輸入：著地立刻反彈
-  }
   const cx = p.x + P / 2, cy = p.y + P / 2;
   for (const k of world.coins) {
     if (!k.taken && Math.abs(k.x - cx) < .62 && Math.abs(k.y - cy) < .62) {
@@ -741,6 +852,26 @@ function simStep() {
   if (++stepCount % 12 === 0 && !FOCUS) checkChallenges(false);
 }
 
+// ---------- 雙人模式：兩個人跑同一條通道，先撞到的人輸 ----------
+function simStepVersus() {
+  stepPlayer(p, curSkin());
+  stepPlayer(p2, vsSkin());
+  const cx = p.x + P / 2;
+  for (const k of world.coins) {   // 兩個人都吃得到，純粹是效果，不計入存檔
+    if (k.taken && true) continue;
+    for (const b of [p, p2]) if (!b.dead && Math.abs(k.x - cx) < .62 && Math.abs(k.y - (b.y + P / 2)) < .62) {
+      k.taken = true; burst(k.x, k.y, 14, '#fff46e', 4, .45); Sound.coin(); break;
+    }
+  }
+  run.score = Math.max(0, Math.floor((p.x - RUN_START_X) / CONFIG.COLS_PER_POINT));
+  while (segPtr + 1 < world.segs.length && world.segs[segPtr + 1].start <= p.x + P) segPtr++;
+  if (p.dead || p2.dead) {
+    if (p.dead) explode(p, curSkin());
+    if (p2.dead) explode(p2, vsSkin());
+    endVersus(p.dead && p2.dead ? 0 : (p.dead ? 2 : 1));
+  }
+}
+
 // ---------- 踩過的地形會被染成方塊的顏色 ----------
 // key = "欄:區塊起始列"，所以染的是「踩到的那一段柱子」，不會連對面那段一起染
 const paint = new Map();
@@ -749,40 +880,70 @@ function paintKey(c, row) {
   while (r > 0 && solidAt(c, r - 1)) r--;     // 往回找這段連續實心的起點
   return c + ':' + r;
 }
-function paintUnderPlayer() {
-  const row = p.g > 0 ? Math.floor(p.y + P + .02) : Math.floor(p.y - .02);
-  const c0 = Math.floor(p.x + .02), c1 = Math.floor(p.x + P - .02);
-  const col = skinPal(curSkin(), clock);       // 彩虹造型會隨時間變色，沿路就是一條漸層
+function paintUnderPlayer(b, col) {
+  const row = b.g > 0 ? Math.floor(b.y + P + .02) : Math.floor(b.y - .02);
+  const c0 = Math.floor(b.x + .02), c1 = Math.floor(b.x + P - .02);
   for (let c = c0; c <= c1; c++) if (solidAt(c, row)) paint.set(paintKey(c, row), col);
 }
 
 // 連續落地時的音階位置：同一側連著踩階梯才累積，往上一階升一階、往下一階降一階
-const landSeq = { idx: 0, t: -9, surf: 0, g: 1 };
-function resetLandSeq() { landSeq.idx = 0; landSeq.t = -9; }
-function landStep() {
-  const surf = p.g > 0 ? p.y + P : p.y;          // 接觸面的位置
-  const rise = landSeq.surf - surf;              // 正 = 這次落點比上次高
-  if (simTime - landSeq.t > 0.6 || p.g !== landSeq.g) landSeq.idx = 0;   // 隔太久或換邊就重來
+function landStep(b) {
+  const sq = b.seq;
+  const surf = b.g > 0 ? b.y + P : b.y;          // 接觸面的位置
+  const rise = sq.surf - surf;                   // 正 = 這次落點比上次高
+  if (simTime - sq.t > 0.6 || b.g !== sq.g) sq.idx = 0;   // 隔太久或換邊就重來
   else if (Math.abs(rise) >= 0.5) {
     const stepN = Math.min(3, Math.round(Math.abs(rise)));
-    landSeq.idx = clamp(landSeq.idx + (rise > 0 ? stepN : -stepN), -10, 10);
+    sq.idx = clamp(sq.idx + (rise > 0 ? stepN : -stepN), -10, 10);
   }
-  landSeq.t = simTime; landSeq.surf = surf; landSeq.g = p.g;
-  return landSeq.idx;
+  sq.t = simTime; sq.surf = surf; sq.g = b.g;
+  return sq.idx;
+}
+
+function explode(b, sk) {
+  const pl = skinPal(sk, clock);
+  for (let i = 0; i < 34; i++) {
+    const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 7;
+    parts.push({ x: b.x + P / 2, y: b.y + P / 2, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: .9, max: .9,
+      size: .12 + Math.random() * .2, color: i % 3 ? pl.front : '#ffffff', sq: true, add: false });
+  }
 }
 
 function die() {
   state = 'dead'; deathT = 0; flash = 1; shake = 1;
-  resetLandSeq();
   Sound.track(null);   // 死亡就停掉關卡音樂
   Sound.death();
   if (FOCUS) FOCUS.deaths++;
-  const pl = skinPal(curSkin(), clock);
-  for (let i = 0; i < 34; i++) {
-    const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 7;
-    parts.push({ x: p.x + P / 2, y: p.y + P / 2, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: .9, max: .9,
-      size: .12 + Math.random() * .2, color: i % 3 ? pl.front : '#ffffff', sq: true, add: false });
+  explode(p, curSkin());
+}
+
+// ---------- 雙人模式結算 ----------
+// winner：1 或 2 = 該位玩家獲勝，0 = 同時撞到算平手，null = 中途離開不顯示結果
+function endVersus(winner) {
+  vsWinner = winner;
+  Sound.track(null); Sound.music(false);
+  if (winner !== null) {
+    flash = 1; shake = 1; Sound.death();
+    state = 'vsend';
+    $('btnPause').classList.add('hidden');
+    $('vsTitle').textContent = winner === 0 ? '平手！' : `玩家 ${winner} 獲勝`;
+    $('vsTitle').className = 'vsTitle p' + winner;
+    $('vsSub').textContent = winner === 0 ? `兩個人同時撞到，撐了 ${run.score} 分`
+      : `玩家 ${winner === 1 ? 2 : 1} 先撞到，這局撐了 ${run.score} 分`;
+    $('vsEnd').classList.remove('hidden');
+  } else {
+    backToMenuFromVersus();
   }
+}
+function backToMenuFromVersus() {
+  $('vsEnd').classList.add('hidden');
+  $('btnPause').classList.add('hidden');
+  p2 = null; vsWinner = null;
+  lastScore = run.score;
+  state = 'menu';
+  newWorld(); p = newPlayer(1); cam.x = p.x - CAM_OFFSET; parts = []; flash = 0; shake = 0;
+  ensureWorld(30);
+  showMenu(false);
 }
 
 function endRun() {
@@ -799,6 +960,7 @@ function endRun() {
   persist();
   if (isLbBest && run.score > 0) submitScore(run.score, mode);   // 只有破排行榜紀錄才送，寫入量最小
   state = 'menu';
+  $('btnPause').classList.add('hidden');
   view.target = 0;   // 回主選單時把翻轉的畫面轉回來
   Sound.track(null); Sound.music(false);
   showMenu(isBest && run.score > 0);
@@ -870,15 +1032,23 @@ function render() {
     boxes.push({ x0: x, x1: x + s, y0: y, y1: y + s, pal: COIN_PAL, glow: 'rgba(255,240,80,.9)', k: DEPTH * .3 });
   }
   const ghost = ghostAlpha();
-  if (state !== 'dead' && ghost > 0) {
+  // 兩個人跑到同一面時會完全重疊，這時把玩家 2 畫小一點，才看得出有兩顆（只是畫面，碰撞不變）
+  const overlap = p2 && !p.dead && !p2.dead && Math.abs(p.y - p2.y) < .5;
+  for (const b of [p, p2]) {
+    if (!b || b.dead || ghost <= 0) continue;
+    if (b === p && state === 'dead') continue;
     // 飛行時沿垂直方向拉長、著地瞬間壓扁，讓切換看起來更俐落
-    const s = P * CELL, sk = curSkin();
-    const st = p.grounded ? 0 : Math.min(1, Math.abs(p.vy) / CONFIG.MAX_FALL) * .32;
-    const sq = p.squash || 0;
-    const hgt = s * (1 + st - sq * .3), wid = s * (1 - st * .45 + sq * .25);
-    const cx = (p.x - cam.x) * CELL + s / 2;
-    let y0 = p.y * CELL + (s - hgt) / 2;
-    if (p.grounded) y0 = p.g > 0 ? p.y * CELL + s - hgt : p.y * CELL;
+    const s = P * CELL, sk = b === p2 ? vsSkin() : curSkin();
+    const st = b.grounded ? 0 : Math.min(1, Math.abs(b.vy) / CONFIG.MAX_FALL) * .32;
+    const sq = b.squash || 0;
+    let hgt = s * (1 + st - sq * .3), wid = s * (1 - st * .45 + sq * .25);
+    const cx = (b.x - cam.x) * CELL + s / 2;
+    let y0 = b.y * CELL + (s - hgt) / 2;
+    if (b.grounded) y0 = b.g > 0 ? b.y * CELL + s - hgt : b.y * CELL;
+    if (b === p2 && overlap) {                       // 縮小並置中，像套在裡面的小方塊
+      const cy = y0 + hgt / 2, f = .55;
+      wid *= f; hgt *= f; y0 = cy - hgt / 2;
+    }
     boxes.push({ x0: cx - wid / 2, x1: cx + wid / 2, y0, y1: y0 + hgt, pal: skinPal(sk, clock), player: sk, glow: 'rgba(255,255,255,.35)', k: DEPTH * .75, alpha: ghost });
   }
   for (const b of boxes) {
@@ -919,14 +1089,36 @@ function render() {
     ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 10;
     ctx.fillStyle = '#fff'; ctx.fillText(run.score, W / 2, 112);
     ctx.shadowBlur = 0;
-    drawTarget();
+    if (!p2) drawTarget();
   }
+  if (p2) drawVsHud();
   if (FOCUS) {
     ctx.font = '600 14px system-ui, sans-serif'; ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(0, 0, W, 26);
     ctx.fillStyle = FOCUS.valid ? '#7dffb0' : '#ff7070';
     ctx.fillText(`${FOCUS.label}：${FOCUS.name}（D${FOCUS.d}）${FOCUS.valid ? '' : ' ⚠ 驗證未通過'}　通過 ${FOCUS.passes} 次　死亡 ${FOCUS.deaths} 次`, 8, 18);
   }
+}
+
+// 雙人模式的提示：左右兩邊各標出是誰、按哪邊
+function drawVsHud() {
+  const sk1 = curSkin(), sk2 = vsSkin();
+  const rows = [
+    { x: 12, align: 'left', col: skinPal(sk1, clock).front, t: '玩家 1', s: '左半邊' },
+    { x: W - 12, align: 'right', col: skinPal(sk2, clock).front, t: '玩家 2', s: '右半邊' },
+  ];
+  ctx.textBaseline = 'alphabetic';
+  for (const r of rows) {
+    ctx.textAlign = r.align;
+    ctx.font = '700 15px "Noto Sans TC", system-ui, sans-serif';
+    ctx.fillStyle = r.col; ctx.fillText(r.t, r.x, 160);
+    ctx.font = '500 12px "Noto Sans TC", system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.fillText(r.s, r.x, 177);
+  }
+  // 中間一條淡淡的分隔線，標示左右操作區
+  ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.setLineDash([8, 10]); ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(W / 2, 185); ctx.lineTo(W / 2, H); ctx.stroke();
+  ctx.setLineDash([]); ctx.lineWidth = 1;
 }
 
 function drawDebug() {
@@ -1007,7 +1199,7 @@ function showMenu(isBest) {
 function syncMode() {
   document.querySelectorAll('#modes button').forEach(b => b.classList.toggle('on', b.dataset.mode === save.mode));
   $('modeDesc').textContent = MODES[save.mode].desc;
-  $('mBest').textContent = bestOf(save.mode);
+  $('mBest').textContent = MODES[save.mode].vs ? '—' : bestOf(save.mode);   // 雙人模式不記最佳成績
 }
 document.querySelectorAll('#modes button').forEach(b => b.onclick = () => {
   if (save.mode === b.dataset.mode) return;
@@ -1071,13 +1263,6 @@ $('fbText').oninput = () => { $('fbCount').textContent = `${$('fbText').value.le
 // 要發新公告就在最上面加一筆，id 用遞增的數字。玩家看過的最大 id 記在存檔裡，
 // 只要新公告的 id 比它大，鈴鐺右上角就會出現紅色數字
 const NEWS = [
-  {
-    id: 4, date: '2026-10-01', title: '關卡難度更動',
-    body: [
-      '將<b>x</b>關卡難度從2調到3',
-      '將<b>盒子</b>關卡難度從4調到5',
-    ],
-  },
   {
     id: 3, date: '2026-10-01', title: '新模式、分模式排行榜、意見箱',
     body: [
@@ -1210,7 +1395,8 @@ function quitFocus() {
   FOCUS = null;
   Sound.track(null); Sound.music(false);
   $('quitFocus').classList.add('hidden');
-  newWorld(); p = newPlayer(); cam.x = p.x - CAM_OFFSET; parts = []; flash = 0; shake = 0;
+  $('btnPause').classList.add('hidden');
+  newWorld(); p = newPlayer(1); cam.x = p.x - CAM_OFFSET; parts = []; flash = 0; shake = 0;
   ensureWorld(30);
   state = 'menu';
   showMenu(false);
@@ -1243,7 +1429,16 @@ syncMute();
 syncNewsDot();
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = closePanels);
 
-cv.addEventListener('pointerdown', e => { e.preventDefault(); press(); });
+$('vsAgain').onclick = () => { $('vsEnd').classList.add('hidden'); startRun(); };
+$('vsHome').onclick = backToMenuFromVersus;
+
+// 雙人模式：點畫面左半邊 = 玩家 1，右半邊 = 玩家 2
+cv.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if (!p2) return press();
+  const r = cv.getBoundingClientRect();
+  press(e.clientX - r.left < r.width / 2 ? 1 : 2);
+});
 addEventListener('keydown', e => {
   // 在輸入框打字時，空白鍵、M、D 等不要被當成遊戲操作（Esc 仍可關閉面板）
   if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName) && e.code !== 'Escape') return;
@@ -1251,10 +1446,16 @@ addEventListener('keydown', e => {
     e.preventDefault();
     if (e.repeat) return;
     if (catOpen()) hideCat();                        // 貓咪還開著，先關掉而不是直接開新局
-    else if (state === 'playing') press();
+    else if (state === 'paused') resumeGame();
+    else if (state === 'vsend') startRun();
+    else if (state === 'playing') press(1);
     else if (state === 'menu' && !panelOpen()) startRun();
-  } else if (e.code === 'Escape') {
+  } else if (e.code === 'KeyA' || e.code === 'ArrowLeft') { if (!e.repeat) press(1); }
+  else if (e.code === 'KeyL' || e.code === 'ArrowRight') { if (!e.repeat) press(2); }
+  else if (e.code === 'Escape') {
     if (catOpen()) hideCat();
+    else if (state === 'paused') resumeGame();
+    else if (state === 'playing') pauseGame();        // 遊戲中 Esc = 暫停
     else if (FOCUS && FOCUS.fromMenu && state !== 'menu') quitFocus();
     else closePanels();
   } else if (e.code === 'KeyM') { Sound.unlock(); Sound.toggleMute(); syncMute(); }
@@ -1264,7 +1465,7 @@ addEventListener('keydown', e => {
 // 初始畫面：主選單背後放一段關卡
 FOCUS = focusFromHash();
 if (FOCUS) { debug = true; addEventListener('hashchange', () => location.reload()); }
-newWorld(); p = newPlayer(); cam.x = p.x - CAM_OFFSET; ensureWorld(30);
+newWorld(); p = newPlayer(1); cam.x = p.x - CAM_OFFSET; ensureWorld(30);
 if (FOCUS) startRun(); else showMenu(false);
 requestAnimationFrame(frame);
 </script>
