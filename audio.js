@@ -3,7 +3,7 @@
 //           Sound.toggleMute() / Sound.isMuted() / Sound.setIntensity(0~1)
 'use strict';
 const Sound = (() => {
-  const MUTE_KEY = 'gravitySwitchMuted';
+  const MUTE_KEY = 'gravitySwitchMuted', VOL_KEY = 'gravitySwitchVolume';
   const BPM = 128, STEP = 60 / BPM / 2;      // 八分音符
   const MUSIC_VOL = 0, SFX_VOL = 0.5;
   const BASE = 55;                            // A1
@@ -17,10 +17,18 @@ const Sound = (() => {
   let ctx = null, master = null, musicBus = null, musicFilter = null, sfxBus = null, noiseBuf = null;
   let playing = false, timer = 0, nextTime = 0, step = 0, intensity = 0;
   let muted = false, coinStreak = 0, lastCoinAt = 0;
+  let volume = 1, wasPlaying = false;           // 總音量、暫停前音樂是否在播
   // 音檔音軌（HTMLAudio，不走 Web Audio，這樣在 file:// 下也能播）
   let trackEl = null, trackSrc = null, synthWanted = false;
   const trackCache = new Map();
-  try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch (e) {}
+  try {
+    muted = localStorage.getItem(MUTE_KEY) === '1';
+    const v = parseFloat(localStorage.getItem(VOL_KEY));
+    if (Number.isFinite(v)) volume = Math.max(0, Math.min(1, v));
+  } catch (e) {}
+  function applyMaster() {
+    if (master) master.gain.setTargetAtTime(muted ? 0 : volume, ctx.currentTime, 0.02);
+  }
 
   // ---------- 編曲素材 ----------
   // 和弦進行（相對於主音的半音），每小節換一個
@@ -74,7 +82,7 @@ const Sound = (() => {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
     try { ctx = new AC(); } catch (e) { return null; }
-    master = ctx.createGain(); master.gain.value = muted ? 0 : 1; master.connect(ctx.destination);
+    master = ctx.createGain(); master.gain.value = muted ? 0 : volume; master.connect(ctx.destination);
     musicFilter = ctx.createBiquadFilter(); musicFilter.type = 'lowpass';
     musicFilter.frequency.value = 2400; musicFilter.Q.value = 0.7; musicFilter.connect(master);
     musicBus = ctx.createGain(); musicBus.gain.value = MUSIC_VOL; musicBus.connect(musicFilter);
@@ -88,7 +96,7 @@ const Sound = (() => {
   // iOS Safari 的 <audio>.volume 是唯讀的（永遠是 1），只設 volume 關不掉聲音，所以同時設 muted
   function applyTrackMute(el) {
     el.muted = muted;
-    try { el.volume = muted ? 0 : TRACK_VOL; } catch (e) {}
+    try { el.volume = muted ? 0 : TRACK_VOL * volume; } catch (e) {}
   }
   function noise() { const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; return s; }
 
@@ -190,9 +198,30 @@ const Sound = (() => {
     toggleMute() {
       muted = !muted;
       try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch (e) {}
-      if (master) master.gain.setTargetAtTime(muted ? 0 : 1, ctx.currentTime, 0.02);
+      applyMaster();
       if (trackEl) applyTrackMute(trackEl);
       return muted;
+    },
+
+    // 總音量 0~1，記在瀏覽器裡
+    getVolume: () => volume,
+    setVolume(v) {
+      volume = Math.max(0, Math.min(1, v));
+      try { localStorage.setItem(VOL_KEY, String(volume)); } catch (e) {}
+      applyMaster();
+      if (trackEl) applyTrackMute(trackEl);
+    },
+
+    // 暫停時把聲音整個停住，繼續時接回來（mp3 不會從頭播）
+    pauseAll(on) {
+      if (on) {
+        wasPlaying = playing;
+        if (playing) startSynth(false);
+        if (trackEl) trackEl.pause();
+      } else {
+        if (wasPlaying && !trackSrc) startSynth(true);
+        if (trackEl) { const pr = trackEl.play(); if (pr && pr.catch) pr.catch(() => {}); }
+      }
     },
     setIntensity(v) { intensity = Math.max(0, Math.min(1, v)); },
 
