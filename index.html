@@ -766,39 +766,44 @@ function startRun() {
 }
 
 // ---------- 暫停 ----------
+// audio.js 若是舊版（沒有這些函式），暫停仍要能用，所以全部包成安全呼叫
+const sndPause = on => { try { Sound.pauseAll && Sound.pauseAll(on); } catch (e) {} };
+const sndVol = () => (Sound.getVolume ? Sound.getVolume() : 1);
+
 function pauseGame() {
   if (state !== 'playing') return;
   state = 'paused';
-  Sound.pauseAll(true);
+  sndPause(true);
   syncVolUI();
   $('pause').classList.remove('hidden');
 }
 function resumeGame() {
   if (state !== 'paused') return;
   $('pause').classList.add('hidden');
-  Sound.pauseAll(false);
+  sndPause(false);
   acc = 0; last = performance.now();   // 暫停期間的時間不要補算進物理
   state = 'playing';
 }
 function pauseToMenu() {
   $('pause').classList.add('hidden');
-  Sound.pauseAll(false);
+  sndPause(false);
   if (FOCUS && FOCUS.fromMenu) { state = 'playing'; quitFocus(); return; }   // 練習模式回選單
   state = 'playing';
   if (isMode('versus')) { endVersus(null); return; }
   endRun();   // 當作這局結束，分數照常結算
 }
 function syncVolUI() {
-  const v = Math.round(Sound.getVolume() * 100);
+  const v = Math.round(sndVol() * 100);
   $('pzVolRange').value = v;
   $('pzVolNum').textContent = v + '%';
   $('pzMute').textContent = '靜音：' + (Sound.isMuted() ? '開' : '關');
+  $('pzVolRange').parentElement.classList.toggle('hidden', !Sound.setVolume);   // 舊版 audio.js 就不顯示音量列
 }
 $('btnPause').onclick = e => { e.stopPropagation(); pauseGame(); };
 $('pzResume').onclick = resumeGame;
 $('pzHome').onclick = pauseToMenu;
 $('pzMute').onclick = () => { Sound.unlock(); Sound.toggleMute(); syncVolUI(); syncMute(); };
-$('pzVolRange').oninput = e => { Sound.unlock(); Sound.setVolume(e.target.value / 100); syncVolUI(); };
+$('pzVolRange').oninput = e => { Sound.unlock(); if (Sound.setVolume) Sound.setVolume(e.target.value / 100); syncVolUI(); };
 
 // who = 1 或 2（雙人模式的第二位玩家）
 function press(who) {
