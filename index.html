@@ -339,6 +339,7 @@
 
 <script src="core.js"></script>
 <script src="levels.js"></script>
+<script src="skins.js"></script>
 <script src="cats.js"></script>
 <script src="audio.js"></script>
 <script>
@@ -374,7 +375,8 @@ const INVIS_START = 20, INVIS_END = 60;   // 隱形模式：從幾分開始變�
 const save = loadSave();
 const bestOf = m => save.bests[m] || 0;
 
-const SKINS = [
+// 造型清單在 skins.js（用 create_cube.html 編輯）。萬一那個檔案沒跟著上傳，就用這份內建的
+const DEFAULT_SKINS = [
   { id: 'classic', name: '經典紅', price: 0,   body: '#e8231f', accent: '#ffb02e', trail: '#ff7a1a' },
   { id: 'ice',     name: '冰晶',   price: 40,  body: '#27b7f5', accent: '#e8fbff', trail: '#6fe3ff' },
   { id: 'lime',    name: '萊姆',   price: 60,  body: '#6fcf1d', accent: '#f4ff9a', trail: '#b8ff4a' },
@@ -386,6 +388,21 @@ const SKINS = [
   { id: 'pink',    name: '霓虹粉', price: 400, body: '#ff2fa8', accent: '#ffffff', trail: '#ff7bd0' },
   { id: 'rainbow', name: '彩虹',   price: 600, rainbow: true, accent: '#ffffff' },
 ];
+const SKINS = (typeof SKIN_LIST !== 'undefined' && SKIN_LIST.length) ? SKIN_LIST.slice() : DEFAULT_SKINS;
+// 造型編輯器可以用 index.html#skin=... 直接把還沒存檔的造型帶進遊戲試用
+(() => {
+  const m = location.hash.match(/^#skin=(.+)$/);
+  if (!m) return;
+  try {
+    const s = JSON.parse(decodeURIComponent(m[1]));
+    if (!s || !s.id) return;
+    const i = SKINS.findIndex(x => x.id === s.id);
+    if (i >= 0) SKINS[i] = s; else SKINS.unshift(s);
+    save.skin = s.id;                      // 只在這次載入生效，不寫回存檔
+    if (!save.owned.includes(s.id)) save.owned.push(s.id);
+    addEventListener('hashchange', () => location.reload());
+  } catch (e) {}
+})();
 
 const CHALLENGES = [
   { t: 'score', n: 10, r: 10 },      { t: 'coinsRun', n: 3, r: 10 },   { t: 'games', n: 5, r: 15 },
@@ -490,10 +507,41 @@ function drawSides(g, b, vx, vy) {
   if (b.x1 < vx) quad(g, b.x1, b.y0, b.x1, b.y1, bx1, by1, bx1, by0, b.pal.side);
   if (b.x0 > vx) quad(g, b.x0, b.y0, b.x0, b.y1, bx0, by1, bx0, by0, b.pal.side);
 }
+// ---------- 像素畫造型 ----------
+// skins.js 裡的 art = { n: 邊長, pal: [顏色...], px: 'n*n 個字元' }
+//   '.' = 空白（透出主色），其餘字元是 pal 的索引（0-9、a-z，36 進位）
+const artCache = new WeakMap();
+function decodeArt(a) {
+  if (!a || !a.n || !a.px) return null;
+  if (Array.isArray(a.px)) return { n: a.n, cells: a.px };   // 編輯器內部用的格式
+  const cells = new Array(a.n * a.n).fill(null);
+  for (let i = 0; i < cells.length; i++) {
+    const ch = a.px[i];
+    if (ch && ch !== '.') cells[i] = (a.pal || [])[parseInt(ch, 36)] || null;
+  }
+  return { n: a.n, cells };
+}
+function skinArt(s) {
+  if (!s || !s.art) return null;
+  if (!artCache.has(s)) artCache.set(s, decodeArt(s.art));
+  return artCache.get(s);
+}
+function drawArt(g, art, x0, y0, w, h) {
+  const cw = w / art.n, ch = h / art.n;
+  for (let r = 0; r < art.n; r++) for (let c = 0; c < art.n; c++) {
+    const col = art.cells[r * art.n + c];
+    if (!col) continue;
+    g.fillStyle = col;
+    g.fillRect(x0 + c * cw, y0 + r * ch, cw + .6, ch + .6);   // 多畫一點點，避免格子之間出現細縫
+  }
+}
+
 function drawFront(g, b) {
   if (b.glow) { g.shadowColor = b.glow; g.shadowBlur = 14; }
   g.fillStyle = b.pal.front; g.fillRect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0);
   if (b.glow) g.shadowBlur = 0;
+  const art = b.player && skinArt(b.player);
+  if (art) { drawArt(g, art, b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0); return; }   // 有像素畫就取代預設圖案
   if (b.player) {   // 玩家方塊正面細節：左側發光窗 + 右側條紋
     const w = b.x1 - b.x0, h = b.y1 - b.y0;
     g.fillStyle = 'rgba(255,255,255,.92)';
@@ -1268,6 +1316,18 @@ $('fbText').oninput = () => { $('fbCount').textContent = `${$('fbText').value.le
 // 要發新公告就在最上面加一筆，id 用遞增的數字。玩家看過的最大 id 記在存檔裡，
 // 只要新公告的 id 比它大，鈴鐺右上角就會出現紅色數字
 const NEWS = [
+  {
+    id: 5, date: '2026-10-02', title: '新模式',
+    body: [
+      '新增<b>雙人模式</b>，快去挑戰你的朋友吧',
+    ],
+  },
+  {
+    id: 4, date: '2026-10-02', title: '遊戲體驗優化',
+    body: [
+      '新增<b>暫停鍵</b>，可以放心在遊戲中打噴嚏、快破紀錄時也可以先緩緩',
+    ],
+  },
   {
     id: 3, date: '2026-10-01', title: '新模式、分模式排行榜、意見箱',
     body: [
