@@ -12,7 +12,7 @@ const Sound = (() => {
   const PENTA_STEPS = [0, 2, 4, 7, 9];
   const pentaSemi = i => 12 * Math.floor(i / 5) + PENTA_STEPS[((i % 5) + 5) % 5];
 
-  const TRACK_VOL = 0.35;                     // 指定關卡用的 mp3 音量
+  const TRACK_VOL = 0;                     // 指定關卡用的 mp3 音量
 
   let ctx = null, master = null, musicBus = null, musicFilter = null, sfxBus = null, noiseBuf = null;
   let playing = false, timer = 0, nextTime = 0, step = 0, intensity = 0;
