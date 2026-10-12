@@ -500,6 +500,7 @@ function quad(g, a, b, c, d, e, f, h, i, fill) {
   g.fillStyle = fill; g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.lineTo(e, f); g.lineTo(h, i); g.closePath(); g.fill();
 }
 function drawSides(g, b, vx, vy) {
+  if (b.player && skinImg(b.player)) return;   // 圖片造型本身就是 2.5D，不用再畫立體側面
   const m = 1 - (b.k || DEPTH);   // 小方塊的厚度按比例縮小
   const bx0 = vx + (b.x0 - vx) * m, bx1 = vx + (b.x1 - vx) * m, by0 = vy + (b.y0 - vy) * m, by1 = vy + (b.y1 - vy) * m;
   if (b.y0 > vy) quad(g, b.x0, b.y0, b.x1, b.y0, bx1, by0, bx0, by0, b.pal.top);
@@ -536,7 +537,39 @@ function drawArt(g, art, x0, y0, w, h) {
   }
 }
 
+// ---------- 圖片造型 ----------
+// skins.js 裡加 img: '圖片路徑'（建議透明背景 PNG），就用圖片取代整顆方塊
+//   imgScale 圖片相對碰撞方塊的大小（預設 1.25，貓耳朵、尾巴可以超出方塊一點）
+//   圖片還沒載入或載入失敗時，照常畫成方塊
+const imgCache = new Map();
+function skinImg(s) {
+  if (!s || !s.img) return null;
+  let im = imgCache.get(s.img);
+  if (!im) {
+    im = new Image();
+    im.onload = () => { if (!$('shop').classList.contains('hidden')) renderShop(); };   // 商店開著就重畫預覽
+    im.src = s.img;
+    imgCache.set(s.img, im);
+  }
+  return im.complete && im.naturalWidth ? im : null;
+}
+// flipY：重力朝上時把圖上下顛倒，貓咪的腳才會踩在天花板上
+function drawSkinImg(g, im, b, flipY) {
+  const sc = b.player.imgScale || 1.25;
+  const w = b.x1 - b.x0, h = b.y1 - b.y0, cx = (b.x0 + b.x1) / 2;
+  const dw = w * sc, dh = h * sc;
+  // 腳貼齊接觸面：重力朝下對齊底邊，朝上對齊頂邊
+  const footY = flipY ? b.y0 : b.y1;
+  g.save();
+  g.translate(cx, footY);
+  if (flipY) g.scale(1, -1);
+  g.drawImage(im, -dw / 2, -dh, dw, dh);
+  g.restore();
+}
+
 function drawFront(g, b) {
+  const im = b.player && skinImg(b.player);
+  if (im) { drawSkinImg(g, im, b, b.flip); return; }
   if (b.glow) { g.shadowColor = b.glow; g.shadowBlur = 14; }
   g.fillStyle = b.pal.front; g.fillRect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0);
   if (b.glow) g.shadowBlur = 0;
@@ -1102,7 +1135,7 @@ function render() {
       const cy = y0 + hgt / 2, f = .55;
       wid *= f; hgt *= f; y0 = cy - hgt / 2;
     }
-    boxes.push({ x0: cx - wid / 2, x1: cx + wid / 2, y0, y1: y0 + hgt, pal: skinPal(sk, clock), player: sk, glow: 'rgba(255,255,255,.35)', k: DEPTH * .75, alpha: ghost });
+    boxes.push({ x0: cx - wid / 2, x1: cx + wid / 2, y0, y1: y0 + hgt, pal: skinPal(sk, clock), player: sk, flip: b.g < 0, glow: 'rgba(255,255,255,.35)', k: DEPTH * .75, alpha: ghost });
   }
   for (const b of boxes) {
     const dx = clamp((b.x0 + b.x1) / 2, -50, W + 50) - VPX, dy = clamp((b.y0 + b.y1) / 2, -50, H + 50) - VPY;
@@ -1317,12 +1350,6 @@ $('fbText').oninput = () => { $('fbCount').textContent = `${$('fbText').value.le
 // 只要新公告的 id 比它大，鈴鐺右上角就會出現紅色數字
 const NEWS = [
   {
-    id: 6, date: '2026-10-09', title: '關卡異動',
-    body: [
-      '由於<b>喪心病狂2</b>過難，考慮後決定暫時移除',
-    ],
-  },
-  {
     id: 5, date: '2026-10-02', title: '新模式',
     body: [
       '新增<b>雙人模式</b>，快去挑戰你的朋友吧',
@@ -1400,7 +1427,7 @@ function renderShop() {
     card.className = 'skin' + (sel ? ' sel' : '');
     const pc = document.createElement('canvas'); pc.width = 120; pc.height = 120;
     const g = pc.getContext('2d');
-    drawCubeAt(g, 26, 34, 60, s.rainbow ? hslPal(300) : pal(s.body), 90, 10, s);
+    drawCubeAt(g, 26, 34, 60, s.rainbow ? hslPal(300) : pal(s.body || '#888888'), 90, 10, s);
     card.appendChild(pc);
     const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = s.name; card.appendChild(nm);
     const pr = document.createElement('div');
