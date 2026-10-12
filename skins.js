@@ -19,6 +19,6 @@ const SKIN_LIST = [
   { id: 'shadow',  name: '黑曜',   price: 320, body: '#2c2644', accent: '#ff2e88', trail: '#ff2e88' },
   { id: 'pink',    name: '霓虹粉', price: 400, body: '#ff2fa8', accent: '#ffffff', trail: '#ff7bd0' },
   { id: 'rainbow', name: '彩虹',   price: 600, rainbow: true,   accent: '#ffffff' },
-  { id: 'godtone', name: '統神',   price: 5000, body: '#f2a65a', accent: '#ffffff', trail: '#ffd08a', img: 'skins/godtone.png', imgScale: 1.3 },
+  { id: 'godtone', name: '統神',   price: 5000, body: '#f2a65a', accent: '#ffffff', trail: '#ffd08a', img: 'skins/godtone.png', imgScale: 5 },
   { id: 'cat',     name: '貓咪',   price: 10000, body: '#f2a65a', accent: '#ffffff', trail: '#ffd08a', img: 'skins/cat.png', imgScale: 1.3 },
 ];
